@@ -32,16 +32,14 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 RUN adduser --disabled-password --gecos '' meican \
- && usermod -aG sudo meican \
- && cd / \
- && curl -kO https://getcomposer.org/download/1.9.3/composer.phar
+ && usermod -aG sudo meican
 
-WORKDIR $MEICAN_DIR
-
-RUN curl -kO https://getcomposer.org/download/1.9.3/composer.phar \
- && su meican -c "php composer.phar global require "fxp/composer-asset-plugin:~1.4.4"" \
+RUN curl -k0 https://getcomposer.org/download/2.2.23/composer.phar -o /usr/local/bin/composer \
+ && chmod +x /usr/local/bin/composer \
  && ln -s $MEICAN_DIR/web /var/www/meican \
  && a2enmod rewrite
+
+WORKDIR $MEICAN_DIR
 
 COPY 000-default.conf /etc/apache2/sites-available/
 

@@ -57,7 +57,11 @@
     },
     "config": {
         "process-timeout": 1800,
-        "secure-http" : false
+        "secure-http" : false,
+        "allow-plugins": {
+            "yiisoft/yii2-composer": true,
+            "composer/installers": true
+        }
     },
     "scripts": {
         "post-install-cmd": [
@@ -82,5 +86,11 @@
             "npm-asset-library": "vendor/npm",
             "bower-asset-library": "vendor/bower"
         }
-    }
+    },
+     "repositories": [
+      {
+          "type": "composer",
+          "url": "https://asset-packagist.org"
+      }
+    ]
 }
