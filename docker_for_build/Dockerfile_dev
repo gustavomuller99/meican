@@ -29,7 +29,28 @@ RUN apt-get update \
     php7.0-soap \
     php7.0-xml \
     libapache2-mod-php \
+    mysql-client \
+    php-pear \
+    php7.0-dev \
+    make \
  && rm -rf /var/lib/apt/lists/*
+
+RUN curl -fsSLk https://github.com/xdebug/xdebug/archive/refs/tags/2.7.2.tar.gz -o /tmp/xdebug-2.7.2.tgz \
+ && cd /tmp \
+ && tar -xzf xdebug-2.7.2.tgz \
+ && cd xdebug-2.7.2 \
+ && phpize \
+ && ./configure --with-php-config=$(which php-config) \
+ && make \
+ && make install \
+ && XDEBUG_SO=$(find /usr/lib/php -name "xdebug.so" | head -1) \
+ && echo "zend_extension=$XDEBUG_SO" > /etc/php/7.0/mods-available/xdebug.ini \
+ && echo "xdebug.remote_enable=1" >> /etc/php/7.0/mods-available/xdebug.ini \
+ && echo "xdebug.remote_autostart=1" >> /etc/php/7.0/mods-available/xdebug.ini \
+ && echo "xdebug.remote_host=host.docker.internal" >> /etc/php/7.0/mods-available/xdebug.ini \
+ && echo "xdebug.remote_port=9000" >> /etc/php/7.0/mods-available/xdebug.ini \
+ && echo "xdebug.remote_log=/tmp/xdebug.log" >> /etc/php/7.0/mods-available/xdebug.ini \
+ && phpenmod -v 7.0 xdebug
 
 RUN adduser --disabled-password --gecos '' meican \
  && usermod -aG sudo meican
@@ -43,8 +64,8 @@ WORKDIR $MEICAN_DIR
 
 COPY 000-default.conf /etc/apache2/sites-available/
 
-COPY docker-entrypoint.sh /
+COPY docker-dev-entrypoint.sh /
 
 EXPOSE 80
 
-ENTRYPOINT ["/docker-entrypoint.sh"]
+ENTRYPOINT ["/docker-dev-entrypoint.sh"]
