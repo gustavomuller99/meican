@@ -6,6 +6,7 @@
 
 namespace meican\circuits\models;
 
+use Exception;
 use Yii;
 
 use meican\aaa\models\Group;
@@ -14,6 +15,8 @@ use meican\bpm\models\BpmFlow;
 use meican\bpm\models\BpmWorkflow;
 use meican\topology\models\Domain;
 use meican\circuits\models\Connection;
+use Override;
+use meican\aaa\audit\CircuitLifecycleLogger;
 
 /**
  * Authorization entity managed by the Workflow service.
@@ -155,6 +158,17 @@ class ConnectionAuth extends \yii\db\ActiveRecord
     		$connection->auth_status= Connection::AUTH_STATUS_EXPIRED;
     		$connection->save();
     	}
+    }
+
+    #[Override]
+    public function save($runValidation = true, $attributeNames = null)
+    {
+        $isSuccessful = parent::save($runValidation, $attributeNames);
+
+        // audit log new connection auth status
+        CircuitLifecycleLogger::getInstance()->logConnectionAuthEvent($this);
+        
+        return $isSuccessful;
     }
     
 }

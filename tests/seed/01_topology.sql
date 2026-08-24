@@ -48,7 +48,7 @@ INSERT INTO `meican_service` (`id`, `provider_id`, `type`, `url`) VALUES
 -- Locations (2 per domain — city-level PoPs)
 -- -----------------------------------------------------------------------------
 INSERT INTO `meican_location` (`id`, `name`, `lat`, `lng`, `domain_id`) VALUES
-(1, 'São Paulo',      -23.5505, -46.6333, 1),
+(1, 'Sao Paulo',      -23.5505, -46.6333, 1),
 (2, 'Rio de Janeiro', -22.9068, -43.1729, 1),
 (3, 'Amsterdam',       52.3676,   4.9041, 2),
 (4, 'Frankfurt',       50.1109,   8.6821, 2),
@@ -69,7 +69,7 @@ INSERT INTO `meican_network` (`id`, `name`, `latitude`, `longitude`, `domain_id`
 -- alias_id set after insert (inter-domain pairs)
 -- -----------------------------------------------------------------------------
 INSERT INTO `meican_port` (`id`, `type`, `directionality`, `urn`, `name`, `lat`, `lng`, `max_capacity`, `min_capacity`, `granularity`, `vlan_range`, `biport_id`, `alias_id`, `network_id`, `location_id`) VALUES
--- RNP São Paulo
+-- RNP Sao Paulo
 (1,  'NSI', 'BI', 'urn:ogf:network:rnp.br:2013:saopaulo-r1:eth0',     'eth0', -23.5505, -46.6333, 10000000, 1000, 1000, '1000-1099', NULL, NULL, 1, 1),
 (2,  'NSI', 'BI', 'urn:ogf:network:rnp.br:2013:saopaulo-r1:eth1',     'eth1', -23.5505, -46.6333, 10000000, 1000, 1000, '1000-1099', NULL, NULL, 1, 1),
 -- RNP Rio de Janeiro

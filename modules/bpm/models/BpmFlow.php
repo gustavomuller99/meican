@@ -7,9 +7,6 @@
 namespace meican\bpm\models;
 
 use Yii;
-use yii\data\ActiveDataProvider;
-use meican\components\DateUtils;
-use meican\controllers\RbacController;
 
 use meican\aaa\models\User;
 
@@ -19,6 +16,7 @@ use meican\circuits\models\ConnectionPath;
 use meican\circuits\models\Reservation;
 use meican\circuits\models\AuthorizationNotification;
 use meican\circuits\models\ReservationNotification;
+use meican\aaa\audit\CircuitLifecycleLogger;
 
 use meican\topology\models\Domain;
 use meican\topology\models\Port;
@@ -218,6 +216,10 @@ class BpmFlow extends \yii\db\ActiveRecord
     	Yii::trace("Connection ID: ".$connection_id);
     	Yii::trace("Domain: ".$domainTop);
     	Yii::trace("Response: ".$response);
+
+		// audit log new workflow authorization event
+		CircuitLifecycleLogger::getInstance()->logWorkflowAuthorizationEvent(Yii::$app->user->getId(), (String) $connection_id, (String) $response);
+
     	
     	$flow = BpmFlow::findOne(['domain' => $domainTop, 'connection_id' => $connection_id]);
     	if(!isset($flow)) return;
@@ -275,7 +277,11 @@ class BpmFlow extends \yii\db\ActiveRecord
     				
     			//Request_User_Authorization
     			case 'Request_User_Authorization':
-    				if($flow->status == self::STATUS_WAITING) return false;
+    				if($flow->status == self::STATUS_WAITING) {
+						// audit log new workflow node event
+						CircuitLifecycleLogger::getInstance()->logWorkflowNodeEvent($flow);
+						return false;
+					}
     				else{
 	    				if($flow->status == self::STATUS_READY) return BpmFlow::createUserAuth($flow, $reservation);
 	    				if($flow->status != self::STATUS_READY) BpmFlow::nextNodes($flow);
@@ -284,7 +290,11 @@ class BpmFlow extends \yii\db\ActiveRecord
     				
     			//Request_Group_Autorization
     			case 'Request_Group_Authorization':
-    				if($flow->status == self::STATUS_WAITING) return false;
+    				if($flow->status == self::STATUS_WAITING) {
+						// audit log new workflow node event
+						CircuitLifecycleLogger::getInstance()->logWorkflowNodeEvent($flow);
+						return false;
+					}
     				else{
 	    				if($flow->status == self::STATUS_READY) return BpmFlow::createGroupAuth($flow, $reservation);
 	    				if($flow->status != self::STATUS_READY) BpmFlow::nextNodes($flow);
@@ -339,6 +349,9 @@ class BpmFlow extends \yii\db\ActiveRecord
      * @param BpmFlow $flow
      */
     public static function nextNodes($flow){
+		// audit log new workflow node event
+		CircuitLifecycleLogger::getInstance()->logWorkflowNodeEvent($flow);
+
     	if($flow->status == self::STATUS_YES) $output_way ='output_yes';
     	else $output_way = 'output_no';
 
@@ -368,6 +381,9 @@ class BpmFlow extends \yii\db\ActiveRecord
      * @param BpmFlow $flow
      */
     public function removeFlow($flow){
+		// audit log workflow result
+		CircuitLifecycleLogger::getInstance()->logWorkflowResultEvent($flow);
+
     	$type = $flow->type;
     	$connection_id = $flow->connection_id;
     	$flow->delete();

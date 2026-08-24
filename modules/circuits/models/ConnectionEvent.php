@@ -6,9 +6,12 @@
 
 namespace meican\circuits\models;
 
+use Exception;
 use Yii;
 
 use meican\aaa\models\User;
+use Override;
+use meican\aaa\audit\CircuitLifecycleLogger;
 
 /**
  * Event associated to a Connection instance.
@@ -180,5 +183,17 @@ class ConnectionEvent extends \yii\db\ActiveRecord
             case self::TYPE_USER_UPDATE:            return 'Edit requested';
             case self::TYPE_USER_CREATE:            return 'Create requested';
         }
+    }
+
+    #[Override]
+    public function save($runValidation = true, $attributeNames = null)
+    {
+        $isSuccessful = parent::save($runValidation, $attributeNames);
+
+        // audit log new connection circuit event
+        CircuitLifecycleLogger::getInstance()->logConnectionCircuitEvent($this);
+        
+        
+        return $isSuccessful;
     }
 }

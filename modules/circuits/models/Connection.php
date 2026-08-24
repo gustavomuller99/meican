@@ -7,12 +7,13 @@
 namespace meican\circuits\models;
 
 use Yii;
+use Override;
 
 use meican\bpm\models\BpmFlow;
 use meican\topology\models\Domain;
-use meican\circuits\models\Connection;
 use meican\circuits\models\ConnectionAuth;
 use meican\base\utils\DateUtils;
+use meican\aaa\audit\CircuitLifecycleLogger;
 
 /**
  * Represents a circuit object.
@@ -470,5 +471,17 @@ class Connection extends \yii\db\ActiveRecord
         //$this->auth_status = 'AUTHORIZED';
         //$this->save();
         //$this->requestProvision();
+    }
+
+
+    #[Override]
+    public function save($runValidation = true, $attributeNames = null)
+    {
+        $isSuccessful = parent::save($runValidation, $attributeNames);
+
+        // audit log new connection status
+        CircuitLifecycleLogger::getInstance()->logConnectionStatusEvent($this);
+
+        return $isSuccessful;
     }
 }

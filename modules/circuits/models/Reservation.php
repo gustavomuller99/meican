@@ -10,6 +10,7 @@ use Yii;
 use yii\data\ActiveDataProvider;
 
 use meican\base\utils\DateUtils;
+use meican\aaa\models\User;
 
 
 /**
