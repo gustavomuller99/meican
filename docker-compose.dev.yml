@@ -23,12 +23,12 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     build:
-      context: ./docker_for_build
-      dockerfile: Dockerfile_dev
+      context: .
+      dockerfile: docker_for_build/dev/Dockerfile
       args:
         - MEICAN_VERSION
     container_name: meican-app-dev
-    entrypoint: ["./docker_for_build/wait-for-mysql.sh", "db", "/docker-dev-entrypoint.sh", "dev"]
+    entrypoint: ["./docker_for_build/wait-for-mysql.sh", "db", "/entrypoint.sh", "dev"]
     volumes:
       - ./:/home/meican/meican-$MEICAN_VERSION
       - hardhat-shared:/shared

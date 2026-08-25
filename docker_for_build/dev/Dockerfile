@@ -66,10 +66,10 @@ RUN curl -k0 https://getcomposer.org/download/2.2.23/composer.phar -o /usr/local
 
 WORKDIR $MEICAN_DIR
 
-COPY 000-default.conf /etc/apache2/sites-available/
+COPY docker_for_build/000-default.conf /etc/apache2/sites-available/
 
-COPY docker-dev-entrypoint.sh /
+COPY docker_for_build/dev/entrypoint.sh /entrypoint.sh
 
 EXPOSE 80
 
-ENTRYPOINT ["/docker-dev-entrypoint.sh"]
+ENTRYPOINT ["/entrypoint.sh"]
