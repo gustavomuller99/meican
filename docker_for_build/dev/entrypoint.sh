@@ -1,5 +1,14 @@
 #!/bin/sh
 
+# Pass blockchain env vars from Docker into Apache (mod_php doesn't inherit the shell env)
+for var in CIRCUIT_LIFECYCLE_LOGGER BLOCKCHAIN_RPC_URL BLOCKCHAIN_CHAIN_ID BLOCKCHAIN_SIGNER_ADDRESS; do
+  val=$(eval echo \$$var)
+  if [ -n "$val" ]; then
+    echo "export $var=$val" >> /etc/apache2/envvars
+  fi
+done
+
+# BLOCKCHAIN_CONTRACT_ADDRESS arrives late via the shared volume written by the hardhat container
 if [ -f /shared/blockchain.env ]; then
   export $(cat /shared/blockchain.env | xargs)
   sed 's/^/export /' /shared/blockchain.env >> /etc/apache2/envvars
