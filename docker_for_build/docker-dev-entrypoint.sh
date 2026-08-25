@@ -1,5 +1,10 @@
 #!/bin/sh
 
+if [ -f /shared/blockchain.env ]; then
+  export $(cat /shared/blockchain.env | xargs)
+  sed 's/^/export /' /shared/blockchain.env >> /etc/apache2/envvars
+fi
+
 cp $MEICAN_DIR/docker_for_build/db.php $MEICAN_DIR/config/ \
  && sed -i "s/MYSQL_DATABASE/$MYSQL_DATABASE/" $MEICAN_DIR/config/db.php \
  && sed -i "s/MYSQL_USER/$MYSQL_USER/" $MEICAN_DIR/config/db.php \

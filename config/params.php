@@ -22,4 +22,12 @@ return [
 
     "oscars.bridge.provider.url" => 'http://meican-cipo.inf.ufrgs.br:8080/oscars-bridge/circuits',
     "esmond.server.api.url" => 'http://monitora.cipo.rnp.br/esmond/v2/',
+
+    'circuit_lifecycle_logger' => getenv('CIRCUIT_LIFECYCLE_LOGGER') ?: 'trace',
+    'blockchain' => [
+        'rpcUrl'          => getenv('BLOCKCHAIN_RPC_URL'),
+        'chainId'         => (int)(getenv('BLOCKCHAIN_CHAIN_ID')),
+        'contractAddress' => getenv('BLOCKCHAIN_CONTRACT_ADDRESS'),
+        'signerPrivateKey'=> getenv('BLOCKCHAIN_SIGNER_PRIVATE_KEY'),
+    ],
 ];

@@ -1,6 +1,23 @@
 version: '3'
 
 services:
+  hardhat:
+    image: meican-hardhat-dev
+    build:
+      context: .
+      dockerfile: docker_for_build/hardhat/Dockerfile
+    container_name: meican-hardhat-dev
+    ports:
+      - "8545:8545"
+    volumes:
+      - hardhat-shared:/shared
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "-X", "POST", "-H", "Content-Type: application/json", "--data", "{\"jsonrpc\":\"2.0\",\"method\":\"net_version\",\"id\":1}", "http://localhost:8545"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
+
   meican:
     image: meican-app-dev
     extra_hosts:
@@ -14,6 +31,12 @@ services:
     entrypoint: ["./docker_for_build/wait-for-mysql.sh", "db", "/docker-dev-entrypoint.sh", "dev"]
     volumes:
       - ./:/home/meican/meican-$MEICAN_VERSION
+      - hardhat-shared:/shared
+    environment:
+      - BLOCKCHAIN_CONTRACT_ADDRESS
+    depends_on:
+      hardhat:
+        condition: service_healthy
     restart: always
 
   phpmyadmin:
@@ -30,3 +53,6 @@ services:
       - db
     links:
       - db
+
+volumes:
+  hardhat-shared:

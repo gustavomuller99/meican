@@ -7,4 +7,7 @@
 /config/params.php
 /config/mailer.php
 /TCC
-/hardhat
+/blockchain/node_modules/
+/blockchain/artifacts/
+/blockchain/cache/
+/blockchain/ignition/deployments/
