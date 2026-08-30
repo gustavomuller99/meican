@@ -22,6 +22,8 @@ use yii\web\IdentityInterface;
  * @property string $date_format
  * @property string $time_format
  * @property string $time_zone
+ * @property string $blockchain_address
+ * @property string $blockchain_private_key
  *
  * @property UserSettings $usersettings
  *
@@ -60,6 +62,10 @@ class User extends \yii\db\ActiveRecord implements IdentityInterface
             [['login'], 'unique'],
             [['email'], 'unique'],
             [['authkey'], 'unique'],
+            [['blockchain_address', 'blockchain_private_key'], 'string'],
+            [['blockchain_address'], 'string', 'max' => 42],
+            [['blockchain_private_key'], 'string', 'max' => 66],
+            [['blockchain_address', 'blockchain_private_key'], 'default', 'value' => null],
         ];
     }
 

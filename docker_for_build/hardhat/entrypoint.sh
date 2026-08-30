@@ -16,7 +16,7 @@ until curl -sf -X POST --data '{"jsonrpc":"2.0","method":"net_version","id":1}' 
 done
 
 echo "Deploying contracts..."
-DEPLOY_OUTPUT=$(npx hardhat ignition deploy ignition/modules/CircuitLifecycle.ts --network localhost 2>&1)
+DEPLOY_OUTPUT=$(npx hardhat ignition deploy ignition/modules/CircuitLifecycle.ts --network localhost --reset 2>&1)
 echo "$DEPLOY_OUTPUT"
 
 CONTRACT_ADDRESS=$(echo "$DEPLOY_OUTPUT" | grep -oE '0x[0-9a-fA-F]{40}' | tail -1)

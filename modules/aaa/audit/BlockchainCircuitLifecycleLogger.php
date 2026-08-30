@@ -19,17 +19,17 @@ class BlockchainCircuitLifecycleLogger extends CircuitLifecycleLogger {
             $reservation = $connection->getReservation()->one();
             $user = $reservation->getRequesterUser()->one();
 
-            EthereumClient::getInstance()->logConnectionStatusEvent(
+            (new EthereumClient())->setConnectionStatus(
                 $connection->external_id,
                 $user->name,
                 $reservation->name,
-                $connection->bandwidth,
+                (string) $connection->bandwidth,
                 $connection->status,
-                $connection->resources_status, 
-                $connection->dataplane_status, 
-                $connection->auth_status, 
-                $connection->start, 
-                $connection->finish
+                $connection->resources_status,
+                $connection->dataplane_status,
+                $connection->auth_status,
+                (string) $connection->start,
+                (string) $connection->finish
             );
         } catch (Exception $_) { }
     }
@@ -39,8 +39,8 @@ class BlockchainCircuitLifecycleLogger extends CircuitLifecycleLogger {
             $connection = $connectionAuth->connection;
 
             CircuitLifecycleLogger::validateConnection($connection);
-            
-            EthereumClient::getInstance()->logConnectionAuthEvent(
+
+            (new EthereumClient())->setConnectionAuth(
                 $connection->external_id,
                 $connectionAuth->domain,
                 $connectionAuth->status
@@ -49,19 +49,28 @@ class BlockchainCircuitLifecycleLogger extends CircuitLifecycleLogger {
     }
 
     public static function logConnectionCircuitEvent(ConnectionEvent $connectionEvent) {
-        
+        try {
+            $connection = $connectionEvent->getConnection()->one();
+
+            CircuitLifecycleLogger::validateConnection($connection);
+
+            (new EthereumClient())->setConnectionCircuit(
+                $connection->external_id,
+                $connectionEvent->type,
+                $connectionEvent->status
+            );
+        } catch (Exception $_) { }
     }
 
     public static function logWorkflowNodeEvent(BpmFlow $bpmFlow) {
-        
-        
+
     }
 
     public static function logWorkflowAuthorizationEvent(String $userId, String $connectionId, String $response) {
-       
+
     }
 
     public static function logWorkflowResultEvent(BpmFlow $bpmFlow) {
-        
+
     }
 }

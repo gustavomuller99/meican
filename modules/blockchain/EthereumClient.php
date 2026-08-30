@@ -18,104 +18,165 @@ use Yii;
  */
 class EthereumClient
 {
-    private static $instance = null;
-
     private $rpcUrl;
-    private $chainId;
     private $contractAddress;
-    private $privateKey;
     private $signerAddress;
 
-    // secp256k1 curve parameters
-    private $P;
-    private $N;
-    private $Gx;
-    private $Gy;
-
-    private function __construct()
+    public function __construct()
     {
         $cfg = Yii::$app->params['blockchain'];
         $this->rpcUrl          = $cfg['rpcUrl'];
-        $this->chainId         = (int) $cfg['chainId'];
         $this->contractAddress = strtolower($cfg['contractAddress']);
-        $key = $cfg['signerPrivateKey'];
-        $this->privateKey    = strncmp($key, '0x', 2) === 0 ? substr($key, 2) : $key;
         $this->signerAddress = strtolower($cfg['signerAddress']);
-
-        $this->P  = \gmp_init('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F', 16);
-        $this->N  = \gmp_init('FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141', 16);
-        $this->Gx = \gmp_init('79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798', 16);
-        $this->Gy = \gmp_init('483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8', 16);
     }
 
-    public static function getInstance(): self
-    {
-        if (self::$instance === null) {
-            self::$instance = new self();
-        }
-        return self::$instance;
+    public function setConnectionStatus(
+        string $externalId, string $userName, string $reservationName, string $bandwidth,
+        string $status, string $resourcesStatus, string $dataplaneStatus,
+        string $authStatus, string $start, string $finish
+    ): string {
+        $tupleArgs = [$userName, $reservationName, $bandwidth, $status, $resourcesStatus, $dataplaneStatus, $authStatus, $start, $finish];
+        $data = $this->encodeCallWithTuple(
+            'setConnectionStatus(string,(string,string,string,string,string,string,string,string,string))',
+            $externalId,
+            $tupleArgs
+        );
+        return $this->sendTransaction($data);
     }
 
-    // -------------------------------------------------------------------------
-    // Public API
-    // -------------------------------------------------------------------------
-
-    public function logConnectionStatusEvent(string $externalId, string $userName, string $reservationName, string $bandwidth, string $status, string $resourceStatus, string $dataplaneStatus, string $authStatus, string $start, string $finish) {
+    public function setConnectionAuth(string $externalId, string $domain, string $status): string {
         $data = $this->encodeCall(
-            'logConnectionStatusEvent((string,string,string,string,string,string,string,string,string,string))',
-            [$externalId, $userName, $reservationName, $bandwidth, $status, $resourceStatus, $dataplaneStatus, $authStatus, $start, $finish]
+            'setConnectionAuth(string,string,string)',
+            [$externalId, $domain, $status]
         );
-        $nonce = $this->getNonce($this->signerAddress);
-        $gasPrice = $this->getGasPrice();
-        $gasLimit = '0x' . dechex(200000);
-
-        $rawTx = $this->buildSignedTransaction(
-            $nonce,
-            $gasPrice,
-            $gasLimit,
-            $this->contractAddress,
-            '0x0',
-            $data
-        );
-
-        return $this->jsonRpc('eth_sendRawTransaction', ['0x' . $rawTx]);
+        return $this->sendTransaction($data);
     }
 
-    public function logConnectionAuthEvent(string $externalId, string $domain, string $status): string {
-        $data = $this->encodeCall('logConnectionAuthEvent(string,string,string)', [$externalId, $domain, $status]);
-        $nonce = $this->getNonce($this->signerAddress);
-        $gasPrice = $this->getGasPrice();
-        $gasLimit = '0x' . dechex(200000);
-
-        $rawTx = $this->buildSignedTransaction(
-            $nonce,
-            $gasPrice,
-            $gasLimit,
-            $this->contractAddress,
-            '0x0',
-            $data
+    public function setConnectionCircuit(string $externalId, string $eventType, string $status): string {
+        $data = $this->encodeCall(
+            'setConnectionCircuit(string,string,string)',
+            [$externalId, $eventType, $status]
         );
-
-        return $this->jsonRpc('eth_sendRawTransaction', ['0x' . $rawTx]);
+        return $this->sendTransaction($data);
     }
 
-    // -------------------------------------------------------------------------
-    // ABI encoding
-    // -------------------------------------------------------------------------
+    /**
+     * Returns the current on-chain state for a circuit as three associative arrays:
+     *   ['connectionStatus' => [...], 'connectionAuth' => [...], 'connectionCircuit' => [...]]
+     */
+    public function getCircuitState(string $externalId): array {
+        $data = $this->encodeCall('getCircuitState(string)', [$externalId]);
+
+        $result = $this->jsonRpc('eth_call', [
+            ['to' => $this->contractAddress, 'data' => '0x' . $data],
+            'latest',
+        ]);
+
+        if (!$result || $result === '0x') {
+            return [];
+        }
+
+        $bytes = hex2bin(ltrim($result, '0x'));
+        $strings = $this->decodeStringTuple($bytes);
+
+        return [
+            'connectionStatus' => [
+                'userName'        => $strings[0] ?? '',
+                'reservationName' => $strings[1] ?? '',
+                'bandwidth'       => $strings[2] ?? '',
+                'status'          => $strings[3] ?? '',
+                'resourcesStatus' => $strings[4] ?? '',
+                'dataplaneStatus' => $strings[5] ?? '',
+                'authStatus'      => $strings[6] ?? '',
+                'start'           => $strings[7] ?? '',
+                'finish'          => $strings[8] ?? '',
+            ],
+            'connectionAuth' => [
+                'domain' => $strings[9]  ?? '',
+                'status' => $strings[10] ?? '',
+            ],
+            'connectionCircuit' => [
+                'type'   => $strings[11] ?? '',
+                'status' => $strings[12] ?? '',
+            ],
+        ];
+    }
+
+    private function sendTransaction(string $data): string
+    {
+        return $this->jsonRpc('eth_sendTransaction', [[
+            'from' => $this->signerAddress,
+            'to'   => $this->contractAddress,
+            'data' => '0x' . $data,
+            'gas'  => '0x' . dechex(500000),
+        ]]);
+    }
+
+    /**
+     * Decodes an ABI-encoded return value that is a flat sequence of dynamic
+     * string fields (from nested structs, which ABI-encode identically to a
+     * tuple of strings at the top level).  Returns an array of string values
+     * in the order they appear in the ABI encoding.
+     */
+    private function decodeStringTuple(string $bytes): array
+    {
+        $wordSize = 32;
+        $totalLen = strlen($bytes);
+        $strings  = [];
+        $offset   = 0;
+
+        // First word is the offset to the outer tuple — skip it.
+        $offset += $wordSize;
+
+        // Read head offsets until we hit data we've already accounted for.
+        $headOffsets = [];
+        while ($offset < $totalLen) {
+            $headOffset = $this->readUint256($bytes, $offset);
+            // Offset is relative to the start of the tuple body (after the
+            // outer tuple pointer word).
+            if ($headOffset > $totalLen) break;
+            $headOffsets[] = $headOffset;
+            $offset += $wordSize;
+            // Stop when the next head would point past what we've read.
+            if (count($headOffsets) > 0 && $headOffset <= ($offset - $wordSize)) break;
+        }
+
+        // Simpler approach: scan all 32-byte words for length-prefixed strings.
+        $strings = [];
+        $pos = 0;
+        while ($pos + $wordSize <= $totalLen) {
+            $candidate = $this->readUint256($bytes, $pos);
+            // A plausible string length: >0 and fits within remaining bytes.
+            if ($candidate > 0 && $candidate <= 1024 && $pos + $wordSize + $candidate <= $totalLen) {
+                $str = substr($bytes, $pos + $wordSize, $candidate);
+                // Only accept if it's valid UTF-8 / printable.
+                if (mb_check_encoding($str, 'UTF-8')) {
+                    $strings[] = $str;
+                    // Advance past length word + padded data.
+                    $pos += $wordSize + (int)(ceil($candidate / $wordSize) * $wordSize);
+                    continue;
+                }
+            }
+            $pos += $wordSize;
+        }
+
+        return $strings;
+    }
+
+    private function readUint256(string $bytes, int $offset): int
+    {
+        // Read last 4 bytes of a 32-byte word as a uint32 (sufficient for
+        // offsets and string lengths we expect — nothing > 4 GB).
+        $word = substr($bytes, $offset, 32);
+        if (strlen($word) < 32) return 0;
+        $parts = unpack('N', substr($word, 28, 4));
+        return $parts[1];
+    }
 
     private function encodeCall(string $signature, array $args): string
     {
-        $selector = substr($this->keccak256(hex2bin(bin2hex($signature))), 0, 4);
+        $selector = substr($this->keccak256($signature), 0, 4);
 
-        // Detect tuple signature: single argument that is a tuple of all strings
-        if (preg_match('/\(\(([^)]+)\)\)$/', $signature)) {
-            // Single tuple argument — outer head points to tuple, tuple encodes args as head/tail
-            $tupleEncoded = $this->encodeTuple($args);
-            $head = str_pad(pack('N', 32), 32, "\x00", STR_PAD_LEFT);
-            return bin2hex($selector . $head . $tupleEncoded);
-        }
-
-        // Flat string arguments
         $argCount   = count($args);
         $headSize   = $argCount * 32;
         $heads      = '';
@@ -130,6 +191,23 @@ class EthereumClient
         }
 
         return bin2hex($selector . $heads . $tails);
+    }
+
+    private function encodeCallWithTuple(string $signature, string $firstArg, array $tupleArgs): string
+    {
+        $selector = substr($this->keccak256($signature), 0, 4);
+
+        $encodedFirst = $this->encodeString($firstArg);
+        $encodedTuple = $this->encodeTuple($tupleArgs);
+
+        $headSize    = 2 * 32;
+        $offsetFirst = $headSize;
+        $offsetTuple = $headSize + strlen($encodedFirst);
+
+        $head = str_pad(pack('N', $offsetFirst), 32, "\x00", STR_PAD_LEFT)
+              . str_pad(pack('N', $offsetTuple), 32, "\x00", STR_PAD_LEFT);
+
+        return bin2hex($selector . $head . $encodedFirst . $encodedTuple);
     }
 
     private function encodeTuple(array $args): string
@@ -157,226 +235,6 @@ class EthereumClient
         $padded  = $value . str_repeat("\x00", (32 - ($len % 32)) % 32);
         return $lenWord . $padded;
     }
-
-    // -------------------------------------------------------------------------
-    // Transaction building & signing
-    // -------------------------------------------------------------------------
-
-    private function buildSignedTransaction(
-        string $nonce,
-        string $gasPrice,
-        string $gasLimit,
-        string $to,
-        string $value,
-        string $data
-    ): string {
-        $nonceInt    = hexdec(ltrim($nonce, '0x'));
-        $gasPriceInt = \gmp_init(ltrim($gasPrice, '0x'), 16);
-        $gasLimitInt = hexdec(ltrim($gasLimit, '0x'));
-        $valueInt    = 0;
-        $dataBytes   = hex2bin($data);
-        $toBytes     = hex2bin(ltrim($to, '0x'));
-
-        // EIP-155 signing payload: [nonce, gasPrice, gasLimit, to, value, data, chainId, 0, 0]
-        $signingList = [
-            $this->encodeRlpInt($nonceInt),
-            $this->encodeRlpBigInt($gasPriceInt),
-            $this->encodeRlpInt($gasLimitInt),
-            $this->rlpBytes($toBytes),
-            $this->encodeRlpInt($valueInt),
-            $this->rlpBytes($dataBytes),
-            $this->encodeRlpInt($this->chainId),
-            $this->encodeRlpInt(0),
-            $this->encodeRlpInt(0),
-        ];
-        $rlpPayload = $this->rlpList($signingList);
-        $msgHash    = $this->keccak256($rlpPayload);
-
-        list($r, $s, $v) = $this->ecSign($msgHash, $this->privateKey, $this->chainId);
-
-        // Final signed transaction: [nonce, gasPrice, gasLimit, to, value, data, v, r, s]
-        $signedList = [
-            $this->encodeRlpInt($nonceInt),
-            $this->encodeRlpBigInt($gasPriceInt),
-            $this->encodeRlpInt($gasLimitInt),
-            $this->rlpBytes($toBytes),
-            $this->encodeRlpInt($valueInt),
-            $this->rlpBytes($dataBytes),
-            $this->encodeRlpBigInt($v),
-            $this->encodeRlpBigInt($r),
-            $this->encodeRlpBigInt($s),
-        ];
-
-        return bin2hex($this->rlpList($signedList));
-    }
-
-    // -------------------------------------------------------------------------
-    // ECDSA over secp256k1
-    // -------------------------------------------------------------------------
-
-    private function ecSign(string $msgHashBytes, string $privKeyHex, int $chainId): array
-    {
-        $z    = \gmp_init(bin2hex($msgHashBytes), 16);
-        $priv = \gmp_init($privKeyHex, 16);
-        $N    = $this->N;
-
-        // Deterministic k via RFC 6979 (simplified: use hash of privkey+hash)
-        $k = $this->rfc6979($priv, $z);
-
-        list($rx, $ry) = $this->ecMul($k, array($this->Gx, $this->Gy));
-        $r = \gmp_mod($rx, $N);
-
-        $kInv = \gmp_invert($k, $N);
-        $s    = \gmp_mod(\gmp_mul($kInv, \gmp_add($z, \gmp_mul($priv, $r))), $N);
-
-        // Normalise s to low-S form (EIP-2)
-        if (\gmp_cmp($s, \gmp_div($N, 2)) > 0) {
-            $s = \gmp_sub($N, $s);
-        }
-
-        // recovery id (0 or 1) + EIP-155 v
-        $recId = \gmp_cmp(\gmp_mod($ry, \gmp_init(2)), \gmp_init(1)) === 0 ? 1 : 0;
-        $v     = \gmp_init($chainId * 2 + 35 + $recId);
-
-        return [$r, $s, $v];
-    }
-
-    /**
-     * RFC 6979 deterministic k (HMAC-SHA256 based).
-     */
-    private function rfc6979(\GMP $privKey, \GMP $z): \GMP
-    {
-        $N    = $this->N;
-        $qLen = 32;
-
-        $privBytes = $this->gmpTo32Bytes($privKey);
-        $hBytes    = $this->gmpTo32Bytes($z);
-
-        $V = str_repeat("\x01", $qLen);
-        $K = str_repeat("\x00", $qLen);
-
-        $K = hash_hmac('sha256', $V . "\x00" . $privBytes . $hBytes, $K, true);
-        $V = hash_hmac('sha256', $V, $K, true);
-        $K = hash_hmac('sha256', $V . "\x01" . $privBytes . $hBytes, $K, true);
-        $V = hash_hmac('sha256', $V, $K, true);
-
-        while (true) {
-            $V = hash_hmac('sha256', $V, $K, true);
-            $k = \gmp_init(bin2hex($V), 16);
-            if (\gmp_cmp($k, \gmp_init(1)) >= 0 && \gmp_cmp($k, $N) < 0) {
-                return $k;
-            }
-            $K = hash_hmac('sha256', $V . "\x00", $K, true);
-            $V = hash_hmac('sha256', $V, $K, true);
-        }
-    }
-
-    // secp256k1 point multiplication (double-and-add)
-    private function ecMul(\GMP $k, array $point): array
-    {
-        $result = null;
-        $addend = $point;
-        $bits   = \gmp_strval($k, 2);
-
-        for ($i = strlen($bits) - 1; $i >= 0; $i--) {
-            if ($bits[$i] === '1') {
-                $result = $result === null ? $addend : $this->ecAdd($result, $addend);
-            }
-            $addend = $this->ecAdd($addend, $addend);
-        }
-        return $result;
-    }
-
-    private function ecAdd(array $p1, array $p2): array
-    {
-        $P  = $this->P;
-        list($x1, $y1) = $p1;
-        list($x2, $y2) = $p2;
-
-        if (\gmp_cmp($x1, $x2) === 0 && \gmp_cmp($y1, $y2) === 0) {
-            $m = \gmp_mod(
-                \gmp_mul(
-                    \gmp_mul(\gmp_init(3), \gmp_mul($x1, $x1)),
-                    \gmp_invert(\gmp_mul(\gmp_init(2), $y1), $P)
-                ),
-                $P
-            );
-        } else {
-            $m = \gmp_mod(
-                \gmp_mul(
-                    \gmp_sub($y2, $y1),
-                    \gmp_invert(\gmp_sub($x2, $x1), $P)
-                ),
-                $P
-            );
-        }
-
-        $x3 = \gmp_mod(\gmp_sub(\gmp_sub(\gmp_mul($m, $m), $x1), $x2), $P);
-        $y3 = \gmp_mod(\gmp_sub(\gmp_mul($m, \gmp_sub($x1, $x3)), $y1), $P);
-        // keep positive
-        if (\gmp_cmp($x3, \gmp_init(0)) < 0) $x3 = \gmp_add($x3, $P);
-        if (\gmp_cmp($y3, \gmp_init(0)) < 0) $y3 = \gmp_add($y3, $P);
-
-        return [$x3, $y3];
-    }
-
-    // -------------------------------------------------------------------------
-    // RLP encoding
-    // -------------------------------------------------------------------------
-
-    private function rlpList(array $encodedItems): string
-    {
-        $payload = implode('', $encodedItems);
-        return $this->rlpLengthPrefix(strlen($payload), 0xc0) . $payload;
-    }
-
-    private function rlpBytes(string $bytes): string
-    {
-        $len = strlen($bytes);
-        if ($len === 1 && ord($bytes[0]) < 0x80) {
-            return $bytes;
-        }
-        return $this->rlpLengthPrefix($len, 0x80) . $bytes;
-    }
-
-    private function encodeRlpInt(int $n): string
-    {
-        if ($n === 0) return "\x80";
-        $hex   = dechex($n);
-        if (strlen($hex) % 2 !== 0) $hex = '0' . $hex;
-        return $this->rlpBytes(hex2bin($hex));
-    }
-
-    private function encodeRlpBigInt(\GMP $n): string
-    {
-        if (\gmp_cmp($n, \gmp_init(0)) === 0) return "\x80";
-        $hex = \gmp_strval($n, 16);
-        if (strlen($hex) % 2 !== 0) $hex = '0' . $hex;
-        $bytes = hex2bin($hex);
-        // strip leading zero byte added for sign if present
-        if (ord($bytes[0]) === 0x00) $bytes = substr($bytes, 1);
-        return $this->rlpBytes($bytes);
-    }
-
-    private function rlpLengthPrefix(int $len, int $base): string
-    {
-        if ($len <= 55) {
-            return chr($base + $len);
-        }
-        $lenBytes = '';
-        $tmp = $len;
-        while ($tmp > 0) {
-            $lenBytes = chr($tmp & 0xff) . $lenBytes;
-            $tmp >>= 8;
-        }
-        return chr($base + 55 + strlen($lenBytes)) . $lenBytes;
-    }
-
-    // -------------------------------------------------------------------------
-    // Keccak-256 — ported from kornrunner/php-keccak (MIT licence)
-    // Uses 32-bit words (two uint32 per lane) so it works on both 32-bit and
-    // 64-bit PHP without GMP and avoids PHP signed-integer edge cases.
-    // -------------------------------------------------------------------------
 
     private function keccak256(string $data): string
     {
@@ -486,20 +344,6 @@ class EthereumClient
         return $st;
     }
 
-    // -------------------------------------------------------------------------
-    // JSON-RPC helpers
-    // -------------------------------------------------------------------------
-
-    private function getNonce(string $address): string
-    {
-        return $this->jsonRpc('eth_getTransactionCount', [$address, 'latest']);
-    }
-
-    private function getGasPrice(): string
-    {
-        return $this->jsonRpc('eth_gasPrice', []);
-    }
-
     private function jsonRpc(string $method, array $params)
     {
         $payload = json_encode([
@@ -532,16 +376,5 @@ class EthereumClient
         }
 
         return $decoded['result'] ?? null;
-    }
-
-    // -------------------------------------------------------------------------
-    // Utilities
-    // -------------------------------------------------------------------------
-
-    private function gmpTo32Bytes(\GMP $n): string
-    {
-        $hex = \gmp_strval($n, 16);
-        $hex = str_pad($hex, 64, '0', STR_PAD_LEFT);
-        return hex2bin($hex);
     }
 }

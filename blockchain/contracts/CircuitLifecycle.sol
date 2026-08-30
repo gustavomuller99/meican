@@ -3,27 +3,7 @@ pragma solidity ^0.8.28;
 
 contract CircuitLifecycle {
 
-    event ConnectionStatusEvent(
-        string indexed externalId,
-        string userName,
-        string reservationName,
-        string bandwidth,
-        string status,
-        string resourcesStatus,
-        string dataplaneStatus,
-        string authStatus,
-        string start,
-        string finish
-    );
-
-    event ConnectionAuthEvent(
-        string indexed externalId,
-        string domain,
-        string status
-    );
-
-    struct ConnectionStatusParams {
-        string externalId;
+    struct ConnectionStatus {
         string userName;
         string reservationName;
         string bandwidth;
@@ -35,17 +15,54 @@ contract CircuitLifecycle {
         string finish;
     }
 
-    function logConnectionAuthEvent(
+    struct ConnectionAuth {
+        string domain;
+        string status;
+    }
+
+    struct ConnectionCircuit {
+        string eventType;
+        string status;
+    }
+
+    mapping(bytes32 => ConnectionStatus) private connectionStatus;
+    mapping(bytes32 => ConnectionAuth)   private connectionAuth;
+    mapping(bytes32 => ConnectionCircuit) private connectionCircuit;
+
+    function setConnectionStatus(
+        string calldata externalId,
+        ConnectionStatus calldata data
+    ) external {
+        connectionStatus[keccak256(bytes(externalId))] = data;
+    }
+
+    function setConnectionAuth(
         string calldata externalId,
         string calldata domain,
         string calldata status
     ) external {
-        emit ConnectionAuthEvent(externalId, domain, status);
+        bytes32 key = keccak256(bytes(externalId));
+        connectionAuth[key] = ConnectionAuth(domain, status);
     }
 
-    function logConnectionStatusEvent(
-        ConnectionStatusParams memory p
+    function setConnectionCircuit(
+        string calldata externalId,
+        string calldata eventType,
+        string calldata status
     ) external {
-        emit ConnectionStatusEvent(p.externalId, p.userName, p.reservationName, p.bandwidth, p.status, p.resourcesStatus, p.dataplaneStatus, p.authStatus, p.start, p.finish);
+        bytes32 key = keccak256(bytes(externalId));
+        connectionCircuit[key] = ConnectionCircuit(eventType, status);
+    }
+
+    function getCircuitState(string calldata externalId)
+        external view
+        returns (
+            ConnectionStatus memory,
+            ConnectionAuth memory,
+            ConnectionCircuit memory
+        )
+    {
+        bytes32 key = keccak256(bytes(externalId));
+        return (connectionStatus[key], connectionAuth[key], connectionCircuit[key]);
     }
 }
