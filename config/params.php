@@ -29,5 +29,6 @@ return [
         'chainId'         => (int)(getenv('BLOCKCHAIN_CHAIN_ID')),
         'contractAddress' => getenv('BLOCKCHAIN_CONTRACT_ADDRESS'),
         'signerPrivateKey'=> getenv('BLOCKCHAIN_SIGNER_PRIVATE_KEY'),
+        'signerAddress'   => getenv('BLOCKCHAIN_SIGNER_ADDRESS'),
     ],
 ];

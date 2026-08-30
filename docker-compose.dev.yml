@@ -37,6 +37,7 @@ services:
       - BLOCKCHAIN_RPC_URL
       - BLOCKCHAIN_CHAIN_ID
       - BLOCKCHAIN_SIGNER_PRIVATE_KEY
+      - BLOCKCHAIN_SIGNER_ADDRESS
       - BLOCKCHAIN_CONTRACT_ADDRESS
     depends_on:
       hardhat:

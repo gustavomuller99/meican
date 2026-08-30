@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Pass blockchain env vars from Docker into Apache (mod_php doesn't inherit the shell env)
-for var in CIRCUIT_LIFECYCLE_LOGGER BLOCKCHAIN_RPC_URL BLOCKCHAIN_CHAIN_ID BLOCKCHAIN_SIGNER_ADDRESS; do
+for var in CIRCUIT_LIFECYCLE_LOGGER BLOCKCHAIN_RPC_URL BLOCKCHAIN_CHAIN_ID BLOCKCHAIN_SIGNER_PRIVATE_KEY BLOCKCHAIN_SIGNER_ADDRESS; do
   val=$(eval echo \$$var)
   if [ -n "$val" ]; then
     echo "export $var=$val" >> /etc/apache2/envvars

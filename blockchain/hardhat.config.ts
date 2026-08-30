@@ -3,7 +3,12 @@ import { defineConfig } from "hardhat/config";
 
 export default defineConfig({
   plugins: [hardhatToolboxViemPlugin],
-  solidity: "0.8.28",
+  solidity: {
+    version: "0.8.28",
+    settings: {
+      viaIR: true,
+    },
+  },
   networks: {
     hardhatLocal: {
       type: "edr-simulated",
