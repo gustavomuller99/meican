@@ -22,88 +22,23 @@ class EthereumClient
     private $contractAddress;
     private $signerAddress;
 
-    public function __construct()
-    {
+    public static function getInstance() {
+        return new EthereumClient();
+    }
+
+    private function __construct() {
         $cfg = Yii::$app->params['blockchain'];
         $this->rpcUrl          = $cfg['rpcUrl'];
         $this->contractAddress = strtolower($cfg['contractAddress']);
         $this->signerAddress = strtolower($cfg['signerAddress']);
     }
 
-    public function setConnectionStatus(
-        string $externalId, string $userName, string $reservationName, string $bandwidth,
-        string $status, string $resourcesStatus, string $dataplaneStatus,
-        string $authStatus, string $start, string $finish
-    ): string {
-        $tupleArgs = [$userName, $reservationName, $bandwidth, $status, $resourcesStatus, $dataplaneStatus, $authStatus, $start, $finish];
-        $data = $this->encodeCallWithTuple(
-            'setConnectionStatus(string,(string,string,string,string,string,string,string,string,string))',
-            $externalId,
-            $tupleArgs
-        );
-        return $this->sendTransaction($data);
-    }
-
-    public function setConnectionAuth(string $externalId, string $domain, string $status): string {
+    public function sendTransaction(string $signature, array $args) {
         $data = $this->encodeCall(
-            'setConnectionAuth(string,string,string)',
-            [$externalId, $domain, $status]
+            $signature,
+            $args
         );
-        return $this->sendTransaction($data);
-    }
 
-    public function setConnectionCircuit(string $externalId, string $eventType, string $status): string {
-        $data = $this->encodeCall(
-            'setConnectionCircuit(string,string,string)',
-            [$externalId, $eventType, $status]
-        );
-        return $this->sendTransaction($data);
-    }
-
-    /**
-     * Returns the current on-chain state for a circuit as three associative arrays:
-     *   ['connectionStatus' => [...], 'connectionAuth' => [...], 'connectionCircuit' => [...]]
-     */
-    public function getCircuitState(string $externalId): array {
-        $data = $this->encodeCall('getCircuitState(string)', [$externalId]);
-
-        $result = $this->jsonRpc('eth_call', [
-            ['to' => $this->contractAddress, 'data' => '0x' . $data],
-            'latest',
-        ]);
-
-        if (!$result || $result === '0x') {
-            return [];
-        }
-
-        $bytes = hex2bin(ltrim($result, '0x'));
-        $strings = $this->decodeStringTuple($bytes);
-
-        return [
-            'connectionStatus' => [
-                'userName'        => $strings[0] ?? '',
-                'reservationName' => $strings[1] ?? '',
-                'bandwidth'       => $strings[2] ?? '',
-                'status'          => $strings[3] ?? '',
-                'resourcesStatus' => $strings[4] ?? '',
-                'dataplaneStatus' => $strings[5] ?? '',
-                'authStatus'      => $strings[6] ?? '',
-                'start'           => $strings[7] ?? '',
-                'finish'          => $strings[8] ?? '',
-            ],
-            'connectionAuth' => [
-                'domain' => $strings[9]  ?? '',
-                'status' => $strings[10] ?? '',
-            ],
-            'connectionCircuit' => [
-                'type'   => $strings[11] ?? '',
-                'status' => $strings[12] ?? '',
-            ],
-        ];
-    }
-
-    private function sendTransaction(string $data): string
-    {
         return $this->jsonRpc('eth_sendTransaction', [[
             'from' => $this->signerAddress,
             'to'   => $this->contractAddress,
@@ -112,14 +47,64 @@ class EthereumClient
         ]]);
     }
 
-    /**
-     * Decodes an ABI-encoded return value that is a flat sequence of dynamic
-     * string fields (from nested structs, which ABI-encode identically to a
-     * tuple of strings at the top level).  Returns an array of string values
-     * in the order they appear in the ABI encoding.
-     */
-    private function decodeStringTuple(string $bytes): array
-    {
+    public function sendTransactionTuple(string $signature, string $firstArg, array $tupleArgs) {
+        $data = $this->encodeCallWithTuple(
+            $signature,
+            $firstArg,
+            $tupleArgs
+        );
+
+        return $this->jsonRpc('eth_sendTransaction', [[
+            'from' => $this->signerAddress,
+            'to'   => $this->contractAddress,
+            'data' => '0x' . $data,
+            'gas'  => '0x' . dechex(500000),
+        ]]);
+    }
+
+    public function ethCall(string $signature, array $args) {
+        $data = $this->encodeCall($signature, $args);
+        $params = [
+            ['to' => $this->contractAddress, 'data' => '0x' . $data],
+            'latest',
+        ];
+        return $this->jsonRpc("eth_call", $params);
+    }
+
+    private function jsonRpc(string $method, array $params) {
+        $payload = json_encode([
+            'jsonrpc' => '2.0',
+            'id'      => 1,
+            'method'  => $method,
+            'params'  => $params,
+        ]);
+
+        $ch = curl_init($this->rpcUrl);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $payload,
+            CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+            CURLOPT_TIMEOUT        => 10,
+        ]);
+
+        $response = curl_exec($ch);
+        $curlErr  = curl_error($ch);
+        curl_close($ch);
+
+        if ($curlErr) {
+            throw new \RuntimeException("Ethereum RPC curl error: $curlErr");
+        }
+
+        $decoded = json_decode($response, true);
+        if (isset($decoded['error'])) {
+            throw new \RuntimeException('Ethereum RPC error: ' . json_encode($decoded['error']));
+        }
+
+        return $decoded['result'] ?? null;
+    }
+    
+    public function decodeStringTuple(string $bytes) {
         $wordSize = 32;
         $totalLen = strlen($bytes);
         $strings  = [];
@@ -163,18 +148,23 @@ class EthereumClient
         return $strings;
     }
 
-    private function readUint256(string $bytes, int $offset): int
-    {
-        // Read last 4 bytes of a 32-byte word as a uint32 (sufficient for
-        // offsets and string lengths we expect — nothing > 4 GB).
-        $word = substr($bytes, $offset, 32);
-        if (strlen($word) < 32) return 0;
-        $parts = unpack('N', substr($word, 28, 4));
-        return $parts[1];
+    private function encodeCallWithTuple(string $signature, string $firstArg, array $tupleArgs) {
+        $selector = substr($this->keccak256($signature), 0, 4);
+
+        $encodedFirst = $this->encodeString($firstArg);
+        $encodedTuple = $this->encodeTuple($tupleArgs);
+
+        $headSize    = 2 * 32;
+        $offsetFirst = $headSize;
+        $offsetTuple = $headSize + strlen($encodedFirst);
+
+        $head = str_pad(pack('N', $offsetFirst), 32, "\x00", STR_PAD_LEFT)
+              . str_pad(pack('N', $offsetTuple), 32, "\x00", STR_PAD_LEFT);
+
+        return bin2hex($selector . $head . $encodedFirst . $encodedTuple);
     }
 
-    private function encodeCall(string $signature, array $args): string
-    {
+    private function encodeCall(string $signature, array $args) {
         $selector = substr($this->keccak256($signature), 0, 4);
 
         $argCount   = count($args);
@@ -193,25 +183,16 @@ class EthereumClient
         return bin2hex($selector . $heads . $tails);
     }
 
-    private function encodeCallWithTuple(string $signature, string $firstArg, array $tupleArgs): string
-    {
-        $selector = substr($this->keccak256($signature), 0, 4);
-
-        $encodedFirst = $this->encodeString($firstArg);
-        $encodedTuple = $this->encodeTuple($tupleArgs);
-
-        $headSize    = 2 * 32;
-        $offsetFirst = $headSize;
-        $offsetTuple = $headSize + strlen($encodedFirst);
-
-        $head = str_pad(pack('N', $offsetFirst), 32, "\x00", STR_PAD_LEFT)
-              . str_pad(pack('N', $offsetTuple), 32, "\x00", STR_PAD_LEFT);
-
-        return bin2hex($selector . $head . $encodedFirst . $encodedTuple);
+    private function readUint256(string $bytes, int $offset) {
+        // Read last 4 bytes of a 32-byte word as a uint32 (sufficient for
+        // offsets and string lengths we expect — nothing > 4 GB).
+        $word = substr($bytes, $offset, 32);
+        if (strlen($word) < 32) return 0;
+        $parts = unpack('N', substr($word, 28, 4));
+        return $parts[1];
     }
 
-    private function encodeTuple(array $args): string
-    {
+    private function encodeTuple(array $args) {
         $argCount   = count($args);
         $headSize   = $argCount * 32;
         $heads      = '';
@@ -228,21 +209,18 @@ class EthereumClient
         return $heads . $tails;
     }
 
-    private function encodeString(string $value): string
-    {
+    private function encodeString(string $value) {
         $len     = strlen($value);
         $lenWord = str_pad(pack('N', $len), 32, "\x00", STR_PAD_LEFT);
         $padded  = $value . str_repeat("\x00", (32 - ($len % 32)) % 32);
         return $lenWord . $padded;
     }
 
-    private function keccak256(string $data): string
-    {
+    private function keccak256(string $data) {
         return hex2bin($this->keccakHash($data, 256));
     }
 
-    private function keccakHash(string $in, int $mdlen): string
-    {
+    private function keccakHash(string $in, int $mdlen) {
         $capacity = $mdlen;
         $rsiz     = 200 - 2 * (int)($capacity / 8);
         $rsizw    = (int)($rsiz / 8);
@@ -277,8 +255,7 @@ class EthereumClient
         return bin2hex(substr($out, 0, (int)($mdlen / 8)));
     }
 
-    private function keccakF1600(array $st): array
-    {
+    private function keccakF1600(array $st) {
         static $rndc = [
             [0x00000000, 0x00000001], [0x00000000, 0x00008082],
             [0x80000000, 0x0000808a], [0x80000000, 0x80008000],
@@ -342,39 +319,5 @@ class EthereumClient
             $st[0] = [$st[0][0] ^ $rndc[$round][0], $st[0][1] ^ $rndc[$round][1]];
         }
         return $st;
-    }
-
-    private function jsonRpc(string $method, array $params)
-    {
-        $payload = json_encode([
-            'jsonrpc' => '2.0',
-            'id'      => 1,
-            'method'  => $method,
-            'params'  => $params,
-        ]);
-
-        $ch = curl_init($this->rpcUrl);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST           => true,
-            CURLOPT_POSTFIELDS     => $payload,
-            CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
-            CURLOPT_TIMEOUT        => 10,
-        ]);
-
-        $response = curl_exec($ch);
-        $curlErr  = curl_error($ch);
-        curl_close($ch);
-
-        if ($curlErr) {
-            throw new \RuntimeException("Ethereum RPC curl error: $curlErr");
-        }
-
-        $decoded = json_decode($response, true);
-        if (isset($decoded['error'])) {
-            throw new \RuntimeException('Ethereum RPC error: ' . json_encode($decoded['error']));
-        }
-
-        return $decoded['result'] ?? null;
     }
 }

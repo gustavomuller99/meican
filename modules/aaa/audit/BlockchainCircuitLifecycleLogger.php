@@ -4,6 +4,7 @@ namespace meican\aaa\audit;
 
 use Yii;
 use Exception;
+use meican\blockchain\CircuitLifecycleClient;
 use meican\bpm\models\BpmFlow;
 use meican\circuits\models\Connection;
 use meican\circuits\models\ConnectionAuth;
@@ -19,7 +20,7 @@ class BlockchainCircuitLifecycleLogger extends CircuitLifecycleLogger {
             $reservation = $connection->getReservation()->one();
             $user = $reservation->getRequesterUser()->one();
 
-            (new EthereumClient())->setConnectionStatus(
+            CircuitLifecycleClient::setConnectionStatus(
                 $connection->external_id,
                 $user->name,
                 $reservation->name,
@@ -40,7 +41,7 @@ class BlockchainCircuitLifecycleLogger extends CircuitLifecycleLogger {
 
             CircuitLifecycleLogger::validateConnection($connection);
 
-            (new EthereumClient())->setConnectionAuth(
+            CircuitLifecycleClient::setConnectionAuth(
                 $connection->external_id,
                 $connectionAuth->domain,
                 $connectionAuth->status
@@ -54,7 +55,7 @@ class BlockchainCircuitLifecycleLogger extends CircuitLifecycleLogger {
 
             CircuitLifecycleLogger::validateConnection($connection);
 
-            (new EthereumClient())->setConnectionCircuit(
+            CircuitLifecycleClient::setConnectionCircuit(
                 $connection->external_id,
                 $connectionEvent->type,
                 $connectionEvent->status
@@ -63,7 +64,7 @@ class BlockchainCircuitLifecycleLogger extends CircuitLifecycleLogger {
     }
 
     public static function logWorkflowNodeEvent(BpmFlow $bpmFlow) {
-
+        
     }
 
     public static function logWorkflowAuthorizationEvent(String $userId, String $connectionId, String $response) {
