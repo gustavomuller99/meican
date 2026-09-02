@@ -191,7 +191,7 @@ class AuthorizationController extends RbacController {
             }
             
             foreach($requests as $req){
-                if ($req->type == ConnectionAuth::TYPE_BLOCKCHAIN) {
+                if ($req->type == ConnectionAuth::TYPE_BLOCKCHAIN || $req->type == ConnectionAuth::TYPE_GROUP_BLOCKCHAIN) {
                     $this->acceptBlockchain($req, $message);
                     continue;
                 }
@@ -244,7 +244,7 @@ class AuthorizationController extends RbacController {
             }
             
             foreach($requests as $req){
-                if ($req->type == ConnectionAuth::TYPE_BLOCKCHAIN) {
+                if ($req->type == ConnectionAuth::TYPE_BLOCKCHAIN || $req->type == ConnectionAuth::TYPE_GROUP_BLOCKCHAIN) {
                     $this->rejectBlockchain($req, $message);
                     continue;
                 }
@@ -274,7 +274,7 @@ class AuthorizationController extends RbacController {
         if($id){
             $req = ConnectionAuth::findOne(['id' => $id]);
 
-            if ($req->type == ConnectionAuth::TYPE_BLOCKCHAIN) {
+            if ($req->type == ConnectionAuth::TYPE_BLOCKCHAIN || $req->type == ConnectionAuth::TYPE_GROUP_BLOCKCHAIN) {
                 $this->acceptBlockchain($req, $message);
                 return;
             }
@@ -315,7 +315,7 @@ class AuthorizationController extends RbacController {
         if($id){
             $req = ConnectionAuth::findOne(['id' => $id]);
 
-            if ($req->type == ConnectionAuth::TYPE_BLOCKCHAIN) {
+            if ($req->type == ConnectionAuth::TYPE_BLOCKCHAIN || $req->type == ConnectionAuth::TYPE_GROUP_BLOCKCHAIN) {
                 $this->rejectBlockchain($req, $message);
                 return;
             }

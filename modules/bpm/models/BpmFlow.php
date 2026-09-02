@@ -20,7 +20,8 @@ use meican\aaa\audit\CircuitLifecycleLogger;
 use meican\blockchain\WorkflowAuthorizationClient;
 use meican\topology\models\Domain;
 use meican\topology\models\Port;
-
+use meican\aaa\models\Group;
+use meican\aaa\models\UserDomainRole;
 
 /**
  * This is the model class for table "meican_bpm_flow_control".
@@ -147,7 +148,8 @@ class BpmFlow extends \yii\db\ActiveRecord
 	    	$flowLine->domain = $domainTop;
 	    	if($flowLine->type == 'Request_Group_Authorization' || 
 				$flowLine->type == 'Request_User_Authorization' ||
-				$flowLine->type == 'Request_User_Authorization_Blockchain') $flowLine->status = self::STATUS_WAITING;
+				$flowLine->type == 'Request_User_Authorization_Blockchain' ||
+				$flowLine->type == 'Request_Group_Authorization_Blockchain') $flowLine->status = self::STATUS_WAITING;
 	    	else $flowLine->status = self::STATUS_READY;
 	    	if($node->operator != null) $flowLine->operator = $node->operator;    		
 	    	if (!$flowLine->save()){
@@ -315,6 +317,19 @@ class BpmFlow extends \yii\db\ActiveRecord
 	    				if($flow->status != self::STATUS_READY) BpmFlow::nextNodes($flow);
     				}
     				break;
+
+				//Request_Group_Autorization
+    			case 'Request_Group_Authorization_Blockchain':
+    				if($flow->status == self::STATUS_WAITING) {
+						// audit log new workflow node event
+						CircuitLifecycleLogger::getInstance()->logWorkflowNodeEvent($flow);
+						return false;
+					}
+    				else{
+	    				if($flow->status == self::STATUS_READY) return BpmFlow::createGroupAuthBlockchain($flow, $reservation);
+	    				if($flow->status != self::STATUS_READY) BpmFlow::nextNodes($flow);
+    				}
+    				break;
     				
     			//Hour
     			case 'Hour':
@@ -383,7 +398,8 @@ class BpmFlow extends \yii\db\ActiveRecord
     	$flowLine->domain = $flow->domain;
     	if($flowLine->type == 'Request_Group_Authorization' || 
 				$flowLine->type == 'Request_User_Authorization' ||
-				$flowLine->type == 'Request_User_Authorization_Blockchain') $flowLine->status = self::STATUS_WAITING;
+				$flowLine->type == 'Request_User_Authorization_Blockchain' ||
+				$flowLine->type == 'Request_Group_Authorization_Blockchain') $flowLine->status = self::STATUS_WAITING;
     	else $flowLine->status = self::STATUS_READY;
     	if($node->operator != null) $flowLine->operator = $node->operator;
     	$flowLine->validate();
@@ -450,6 +466,38 @@ class BpmFlow extends \yii\db\ActiveRecord
     	$auth->connection_id = $flow->connection_id;
     	$auth->save();
     	
+    	AuthorizationNotification::createToGroup($flow->value, $flow->domain, $reservation->id, $auth->id);
+    	
+    	return false;
+    }
+
+	public function createGroupAuthBlockchain($flow, $reservation){
+    	Yii::trace("Criando Request Group Authorization");
+    	
+    	//Confere se o grupo ja respondeu exatamente mesma requisição, se sim, não questiona novamente.
+    	$auth = ConnectionAuth::findOne(['type' => ConnectionAuth::TYPE_GROUP_BLOCKCHAIN, 'domain' => $flow->domain, 'manager_group_id' => $flow->value, 'connection_id' => $flow->connection_id]);
+    	 
+    	if($auth) return true;
+    	
+    	$auth = new ConnectionAuth();
+    	$auth->domain = $flow->domain;
+    	$auth->status = self::STATUS_WAITING;
+    	$auth->type = ConnectionAuth::TYPE_GROUP_BLOCKCHAIN;
+    	$auth->manager_group_id = $flow->value;
+    	$auth->connection_id = $flow->connection_id;
+    	$auth->save();
+
+		/* Create blockchain request */
+		$group = Group::find()->where(['id' => $flow->value])->one();
+		$roles = UserDomainRole::findByGroup($group);
+		$addresses = [];
+		foreach($roles->all() as $role){
+			$user = User::find()->where(['id' => $role->user_id])->one();
+			$addresses[] = $user->blockchain_address;
+		}
+    	
+		WorkflowAuthorizationClient::requestAuthorization($auth->connection->external_id, $addresses);
+
     	AuthorizationNotification::createToGroup($flow->value, $flow->domain, $reservation->id, $auth->id);
     	
     	return false;

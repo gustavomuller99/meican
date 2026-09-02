@@ -37,6 +37,7 @@ class GraphNode{
 	 * 9 - Group
 	 * 10 - Device
 	 * 11 - Request_User_Authorization_Blockchain
+	 * 12 - Request_Group_Authorization_Blockchain
 	 * 20 - Accept_Automatically
 	 * 30 - Deny_Automatically
 	 */
@@ -119,6 +120,9 @@ class GraphNode{
 			case "Request_Group_Authorization":
 				$this->type = 5;
 				break;
+			case "Request_Group_Authorization_Blockchain":
+				$this->type = 12;
+				break;
 			case "Hour":
 				$this->type = 6;
 				break;
@@ -165,6 +169,9 @@ class GraphNode{
 				break;
 			case 'Request_Group_Authorization':
 				return "Request Authorization to Group";
+				break;
+			case 'Request_Group_Authorization_Blockchain':
+				return "Request Authorization to Group in Blockchain";
 				break;
 			case 'Accept_Automatically':
 				return "Authorization Accepted";
