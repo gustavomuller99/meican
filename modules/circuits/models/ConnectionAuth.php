@@ -45,6 +45,7 @@ class ConnectionAuth extends \yii\db\ActiveRecord
 	const TYPE_USER = "USER";
 	const TYPE_GROUP = "GROUP";
 	const TYPE_WORKFLOW = "WORKFLOW";
+    const TYPE_BLOCKCHAIN = "BLOCKCHAIN";
 
     /**
      * @inheritdoc

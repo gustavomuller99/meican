@@ -26,6 +26,7 @@ use meican\bpm\models\BpmFlow;
 use meican\topology\models\Domain;
 use meican\notify\models\Notification;
 use meican\base\utils\DateUtils;
+use meican\blockchain\WorkflowAuthorizationClient;
 
 /**
  * @author Diego Pittol
@@ -190,6 +191,11 @@ class AuthorizationController extends RbacController {
             }
             
             foreach($requests as $req){
+                if ($req->type == ConnectionAuth::TYPE_BLOCKCHAIN) {
+                    $this->acceptBlockchain($req, $message);
+                    continue;
+                }
+
                 if($req->status == Connection::AUTH_STATUS_PENDING){
                     if($req->type == ConnectionAuth::TYPE_GROUP) $req->manager_user_id = Yii::$app->user->getId();
                     if($message) $req->manager_message = $message;
@@ -238,6 +244,11 @@ class AuthorizationController extends RbacController {
             }
             
             foreach($requests as $req){
+                if ($req->type == ConnectionAuth::TYPE_BLOCKCHAIN) {
+                    $this->rejectBlockchain($req, $message);
+                    continue;
+                }
+
                 if($req->status == Connection::AUTH_STATUS_PENDING){
                     if($req->type == ConnectionAuth::TYPE_GROUP) $req->manager_user_id = Yii::$app->user->getId();
                     if($message) $req->manager_message = $message;
@@ -262,6 +273,12 @@ class AuthorizationController extends RbacController {
         Yii::trace("Msg: ".$message);
         if($id){
             $req = ConnectionAuth::findOne(['id' => $id]);
+
+            if ($req->type == ConnectionAuth::TYPE_BLOCKCHAIN) {
+                $this->acceptBlockchain($req, $message);
+                return;
+            }
+
             if($req->type == ConnectionAuth::TYPE_GROUP) $req->manager_user_id = Yii::$app->user->getId();
             if($message) $req->manager_message = $message;
             $req->status = Connection::AUTH_STATUS_APPROVED;
@@ -270,6 +287,20 @@ class AuthorizationController extends RbacController {
             $flow = new BpmFlow;
             $flow->response($req->connection_id, $req->domain, BpmFlow::STATUS_YES);    
         }
+    }
+
+    private function acceptBlockchain(ConnectionAuth $req = null, $message = null) {
+        /* Accept in the blockchain */
+		$user = User::find()->where(['id' => Yii::$app->user->getId()])->one();
+		$connection = $req->connection;
+		$ret = WorkflowAuthorizationClient::submitAuthorization($connection->external_id, true, $user->blockchain_address);
+
+        if($message) $req->manager_message = $message;
+        $req->status = Connection::AUTH_STATUS_APPROVED;
+        $req->save();
+        
+        $flow = new BpmFlow;
+        $flow->response($req->connection_id, $req->domain, BpmFlow::STATUS_YES);
     }
     
     /**
@@ -283,6 +314,12 @@ class AuthorizationController extends RbacController {
         Yii::trace("Msg: ".$message);
         if($id){
             $req = ConnectionAuth::findOne(['id' => $id]);
+
+            if ($req->type == ConnectionAuth::TYPE_BLOCKCHAIN) {
+                $this->rejectBlockchain($req, $message);
+                return;
+            }
+
             if($req->type == ConnectionAuth::TYPE_GROUP) $req->manager_user_id = Yii::$app->user->getId();
             if($message != null) $req->manager_message = $message;
             $req->status = Connection::AUTH_STATUS_REJECTED;
@@ -291,6 +328,20 @@ class AuthorizationController extends RbacController {
             $flow = new BpmFlow;
             $flow->response($req->connection_id, $req->domain, BpmFlow::STATUS_NO);
         }
+    }
+
+    private function rejectBlockchain(ConnectionAuth $req = null, $message = null) {
+        /* Reject in the blockchain */
+		$user = User::find()->where(['id' => Yii::$app->user->getId()])->one();
+		$connection = $req->connection;
+		$ret = WorkflowAuthorizationClient::submitAuthorization($connection->external_id, false, $user->blockchain_address);
+
+        if($message != null) $req->manager_message = $message;
+        $req->status = Connection::AUTH_STATUS_REJECTED;
+        $req->save();
+        
+        $flow = new BpmFlow;
+        $flow->response($req->connection_id, $req->domain, BpmFlow::STATUS_NO);
     }
 
 }

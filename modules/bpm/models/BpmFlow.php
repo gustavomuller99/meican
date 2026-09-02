@@ -17,7 +17,7 @@ use meican\circuits\models\Reservation;
 use meican\circuits\models\AuthorizationNotification;
 use meican\circuits\models\ReservationNotification;
 use meican\aaa\audit\CircuitLifecycleLogger;
-
+use meican\blockchain\WorkflowAuthorizationClient;
 use meican\topology\models\Domain;
 use meican\topology\models\Port;
 
@@ -145,7 +145,9 @@ class BpmFlow extends \yii\db\ActiveRecord
 	    	$flowLine->workflow_id = $workflow->id;
 	    	$flowLine->connection_id = $connection_id;
 	    	$flowLine->domain = $domainTop;
-	    	if($flowLine->type == 'Request_Group_Authorization' || $flowLine->type == 'Request_User_Authorization') $flowLine->status = self::STATUS_WAITING;
+	    	if($flowLine->type == 'Request_Group_Authorization' || 
+				$flowLine->type == 'Request_User_Authorization' ||
+				$flowLine->type == 'Request_User_Authorization_Blockchain') $flowLine->status = self::STATUS_WAITING;
 	    	else $flowLine->status = self::STATUS_READY;
 	    	if($node->operator != null) $flowLine->operator = $node->operator;    		
 	    	if (!$flowLine->save()){
@@ -287,6 +289,19 @@ class BpmFlow extends \yii\db\ActiveRecord
 	    				if($flow->status != self::STATUS_READY) BpmFlow::nextNodes($flow);
     				}
     				break;
+
+				// Request_User_Authorization_Blockchain
+				case 'Request_User_Authorization_Blockchain':
+    				if($flow->status == self::STATUS_WAITING) {
+						// audit log new workflow node event
+						CircuitLifecycleLogger::getInstance()->logWorkflowNodeEvent($flow);
+						return false;
+					}
+    				else{
+	    				if($flow->status == self::STATUS_READY) return BpmFlow::createUserAuthBlockchain($flow, $reservation);
+	    				if($flow->status != self::STATUS_READY) BpmFlow::nextNodes($flow);
+    				}
+    				break;
     				
     			//Request_Group_Autorization
     			case 'Request_Group_Authorization':
@@ -366,7 +381,9 @@ class BpmFlow extends \yii\db\ActiveRecord
     	$flowLine->workflow_id = $flow->workflow_id;
     	$flowLine->connection_id = $flow->connection_id;
     	$flowLine->domain = $flow->domain;
-    	if($flowLine->type == 'Request_Group_Authorization' || $flowLine->type == 'Request_User_Authorization') $flowLine->status = self::STATUS_WAITING;
+    	if($flowLine->type == 'Request_Group_Authorization' || 
+				$flowLine->type == 'Request_User_Authorization' ||
+				$flowLine->type == 'Request_User_Authorization_Blockchain') $flowLine->status = self::STATUS_WAITING;
     	else $flowLine->status = self::STATUS_READY;
     	if($node->operator != null) $flowLine->operator = $node->operator;
     	$flowLine->validate();
@@ -460,6 +477,39 @@ class BpmFlow extends \yii\db\ActiveRecord
 	    $auth->manager_user_id = $flow->value;
 	    $auth->connection_id = $flow->connection_id;
 	    $auth->save();
+	    
+	    AuthorizationNotification::createToUser($flow->value, $flow->domain, $reservation->id, $auth->id);
+    	
+    	return false;
+    }
+
+	public function createUserAuthBlockchain($flow, $reservation){
+    	Yii::trace("Criando Request User Authorization");
+    	
+    	//Confere se o usuário ja respondeu exatamente mesma requisição, se sim, não questiona novamente.
+    	$auth = ConnectionAuth::findOne(['type' => ConnectionAuth::TYPE_BLOCKCHAIN, 'domain' => $flow->domain, 'manager_user_id' => $flow->value, 'connection_id' => $flow->connection_id]);
+    	
+    	if($auth) return true;
+    	
+    	//Confere se usuário requisitante é o mesmo que deve responder. Se sim, não pergunta, considera aceito.
+    	if($flow->value == $reservation->request_user_id){
+    		$flow->status = self::STATUS_YES;
+    		$flow->save();
+    		return true;
+    	}
+	    
+    	$auth = new ConnectionAuth();
+	    $auth->domain = $flow->domain;
+	    $auth->status = Connection::AUTH_STATUS_PENDING;
+	    $auth->type = ConnectionAuth::TYPE_BLOCKCHAIN;
+	    $auth->manager_user_id = $flow->value;
+	    $auth->connection_id = $flow->connection_id;
+	    $auth->save();
+
+		/* Create blockchain request */
+		$user = User::find()->where(['id' => $flow->value])->one();
+		$connection = $auth->connection;
+		WorkflowAuthorizationClient::requestAuthorization($connection->external_id, [$user->blockchain_address]);
 	    
 	    AuthorizationNotification::createToUser($flow->value, $flow->domain, $reservation->id, $auth->id);
     	

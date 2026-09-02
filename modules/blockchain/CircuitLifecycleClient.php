@@ -20,20 +20,20 @@ class CircuitLifecycleClient {
     }
 
     public static function setConnectionAuth(string $externalId, string $domain, string $status) {
-        return EthereumClient::getInstance()->sendTransaction(
+        return EthereumClient::getInstance()->sendTransactionMeican(
             'setConnectionAuth(string,string,string)',
             [$externalId, $domain, $status]
         );
     }
 
     public static function setConnectionCircuit(string $externalId, string $eventType, string $status) {
-        return EthereumClient::getInstance()->sendTransaction(
+        return EthereumClient::getInstance()->sendTransactionMeican(
             'setConnectionCircuit(string,string,string)',
             [$externalId, $eventType, $status]
         );
     }
 
-    public static function getCircuitState(string $externalId): array {
+    public static function getCircuitState(string $externalId) {
         $client = EthereumClient::getInstance();
 
         $result = $client->ethCall('getCircuitState(string)', [$externalId]);
@@ -42,28 +42,31 @@ class CircuitLifecycleClient {
             return [];
         }
 
-        $bytes = hex2bin(ltrim($result, '0x'));
-        $strings = $client->decodeStringTuple($bytes);
+        $bytes = hex2bin(substr($result, 2));
+        $tuples = $client->decodeGetCircuitState($bytes, [9, 2, 2]);
+        $cs = $tuples[0];
+        $ca = $tuples[1];
+        $cc = $tuples[2];
 
         return [
             'connectionStatus' => [
-                'userName'        => $strings[0] ?? '',
-                'reservationName' => $strings[1] ?? '',
-                'bandwidth'       => $strings[2] ?? '',
-                'status'          => $strings[3] ?? '',
-                'resourcesStatus' => $strings[4] ?? '',
-                'dataplaneStatus' => $strings[5] ?? '',
-                'authStatus'      => $strings[6] ?? '',
-                'start'           => $strings[7] ?? '',
-                'finish'          => $strings[8] ?? '',
+                'userName'        => $cs[0] ?? '',
+                'reservationName' => $cs[1] ?? '',
+                'bandwidth'       => $cs[2] ?? '',
+                'status'          => $cs[3] ?? '',
+                'resourcesStatus' => $cs[4] ?? '',
+                'dataplaneStatus' => $cs[5] ?? '',
+                'authStatus'      => $cs[6] ?? '',
+                'start'           => $cs[7] ?? '',
+                'finish'          => $cs[8] ?? '',
             ],
             'connectionAuth' => [
-                'domain' => $strings[9]  ?? '',
-                'status' => $strings[10] ?? '',
+                'domain' => $ca[0] ?? '',
+                'status' => $ca[1] ?? '',
             ],
             'connectionCircuit' => [
-                'type'   => $strings[11] ?? '',
-                'status' => $strings[12] ?? '',
+                'type'   => $cc[0] ?? '',
+                'status' => $cc[1] ?? '',
             ],
         ];
     }

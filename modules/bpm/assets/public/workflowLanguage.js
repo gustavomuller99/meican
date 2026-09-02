@@ -580,207 +580,6 @@ modules: [
 		}
 	},
 	
-	/*{	name: "WeekDay",
-		container: {
-			icon: iconPath + "ico_weekday.png",
-			xtype: "WireIt.MeicanContainer",
-			image: imagePath + "weekday.png",
-			propertiesForm: [],
-	   				
-			terminals: [
-	        {	name: "_INPUT",
-	        	ddConfig: {
-	        	      type: "input",
-	        	      allowedTypes: ["output"]
-	        	},
-	        	nMaxWires: "1",
-	        	wireConfig: {"drawingMethod": "arrows"},
-	           	direction: [-1,0],
-	            offsetPosition: {
-	                left: -15, 
-	                top: 9
-	            }
-	        },
-	
-	        {	name: "_OUTPUT_YES",
-	        	ddConfig: {
-	        	      type: "output",
-	        	      allowedTypes: ["input"]
-	        	},
-	        	direction: [1,0],
-	        	nMaxWires: "1",
-	        	wireConfig: { "drawingMethod": "arrows"},
-	        	offsetPosition: {
-	        		left: 55, 
-	        		top: -3
-	        	}
-	        },
-	        
-	        {	name: "_OUTPUT_NO",
-	        	ddConfig: {
-	        	      type: "output",
-	        	      allowedTypes: ["input"]
-	        	},
-			    direction: [1,1],
-			    nMaxWires: "1",
-			    wireConfig: { "drawingMethod": "arrows"},
-			    offsetPosition: {
-			        left: 55, 
-			        top: 21
-			    }
-	        }
-	        ],
-
-			fields: [
-			{	type: "inplaceedit", 
-				inputParams: {
-					name: "post",
-					editorField:{
-						type: "select", 
-						inputParams: 
-						{	 
-							name: "day",
-							selectValues: weekday_keys,
-	                        selectOptions: weekday_values
-							
-						}
-					},
-					animColors:{
-						from:"#FFFF99", 
-						to:"#DDDDFF"
-					}
-				}
-			}, 		
-			]
-		}
-	},*/
-	
-	/*{	name: "Hour",
-		container: {
-			xtype:"WireIt.MeicanContainer", 
-			image: imagePath + "schedule.png",
-			icon: iconPath + "ico_schedule.png",
-		
-			terminals: [
-	        {	name: "_INPUT",
-	        	ddConfig: {
-	        	      type: "input",
-	        	      allowedTypes: ["output"]
-	        	},
-	        	nMaxWires: "1",
-	        	wireConfig: {"drawingMethod": "arrows"},
-	           	direction: [-1,0],
-	            offsetPosition: {
-	                left: -15, 
-	                top: 9
-	            }
-	        },
-	
-	        {	name: "_OUTPUT_YES",
-	        	ddConfig: {
-	        	      type: "output",
-	        	      allowedTypes: ["input"]
-	        	},
-	        	direction: [1,0],
-	        	nMaxWires: "1",
-	        	wireConfig: { "drawingMethod": "arrows"},
-	        	offsetPosition: {
-	        		left: 55, 
-	        		top: -3
-	        	}
-	        },
-	        
-	        {	name: "_OUTPUT_NO",
-	        	ddConfig: {
-	        	      type: "output",
-	        	      allowedTypes: ["input"]
-	        	},
-			    direction: [1,1],
-			    nMaxWires: "1",
-			    wireConfig: { "drawingMethod": "arrows"},
-			    offsetPosition: {
-			        left: 55, 
-			        top: 21
-			    }
-	        }
-	        ],
-		
-			fields: [
-			{
-				type: "inplaceedit", 
-			    inputParams: {
-			        name: "post",
-			        editorField: {
-			            type: "group", 
-			            inputParams: {
-			                fields:[
-		                        {
-		                        	type: "combine",
-									inputParams: {
-										name: "init",
-										fields:[
-									        {
-									        	type: "select", 
-							                    inputParams: {
-							                    	name: "inithour", 
-							                        selectValues: hours,
-							                    }
-									        },
-									        {
-									        	type: "select", 
-							                    inputParams: {
-							                        name: "initminute", 
-							                        selectValues: minutes,
-							                    }
-									        },
-								        ],
-										separators: [false,"h&nbsp;&nbsp;","m&nbsp;&nbsp;"],
-									}
-		                        },           
-		                        {
-		                        	type: "combine",
-		                        	inputParams: {
-		                        		name: "finish",
-		                        		label: tt("to"),
-		                        		fields:[
-	                        		        {
-                        		        		type: "select", 
-                        		        		inputParams: {
-							                        name: "finishhour", 
-							                        selectValues: hours,
-							                    }
-	                        		        },
-	                        		        {
-	                        		        	type: "select", 
-	                        		        	inputParams: {
-							                        name: "finishminute", 
-							                        selectValues: minutes,
-							                    }
-									         },
-								         ],
-								         separators: [false,"h&nbsp;&nbsp;","m&nbsp;&nbsp;"],
-		                        	}
-		                        },    
-			                ],
-			            }
-			        },
-					visu: {
-					    visuType: 'func', 
-					    func: function(val) {
-					        //console.debug(val);
-					        return val.init[0] + ":" + val.init[1] + " " + tt("to") + " " + val.finish[0] + ":" + val.finish[1];
-					    }
-					},
-					animColors:{
-					    from:"#FFFF99", 
-					    to:"#DDDDFF"
-					},
-			    }
-			}
-			]
-		}
-	},*/
-	
 	{	name: "Request_User_Authorization",
 		container: {
 			xtype:"WireIt.MeicanContainer", 
@@ -854,6 +653,78 @@ modules: [
 		}
 	},
 
+	{	name: "Request_User_Authorization_Blockchain",
+		container: {
+			xtype:"WireIt.MeicanContainer", 
+			image: imagePath + "request_user_blockchain.jpeg",
+			icon: iconPath + "ico_request_user_blockchain.jpeg",
+
+			terminals: [
+	        {	name: "_INPUT",
+	        	ddConfig: {
+	        	      type: "input",
+	        	      allowedTypes: ["output"]
+	        	},
+	        	nMaxWires: "1",
+	        	wireConfig: {"drawingMethod": "arrows"},
+	           	direction: [-1,0],
+	            offsetPosition: {
+	                left: -15, 
+	                top: 9
+	            }
+	        },
+	
+	        {	name: "_OUTPUT_YES",
+	        	ddConfig: {
+	        	      type: "output",
+	        	      allowedTypes: ["input"]
+	        	},
+	        	direction: [1,0],
+	        	nMaxWires: "1",
+	        	wireConfig: { "drawingMethod": "arrows"},
+	        	offsetPosition: {
+	        		left: 55, 
+	        		top: -3
+	        	}
+	        },
+	        
+	        {	name: "_OUTPUT_NO",
+	        	ddConfig: {
+	        	      type: "output",
+	        	      allowedTypes: ["input"]
+	        	},
+			    direction: [1,1],
+			    nMaxWires: "1",
+			    wireConfig: { "drawingMethod": "arrows"},
+			    offsetPosition: {
+			        left: 55, 
+			        top: 21
+			    }
+	        }
+	        ],
+			
+			fields: [
+			{	type: "inplaceedit", 
+			    inputParams: {
+			        name: "post",
+			        editorField:{
+			            type: "select", 
+			            inputParams: 
+			            {	label: "", 
+			                name: "title", 
+			                selectValues: admins_keys,
+	                        selectOptions: admins_values
+			            }
+			        },
+					animColors:{
+						from:"#FFFF99" , 
+					    to:"#DDDDFF"
+					}
+			    }
+			}, 			
+			],
+		}
+	},
 	
 	{	name: "Request_Group_Authorization",
 		container: {
@@ -927,8 +798,7 @@ modules: [
 	        ],
 		}
 	},
-	
-	
+		
 	{	name: "Accept_Automatically",
 	    container: {
 	        icon: iconPath + "ico_accept.png",
@@ -955,7 +825,6 @@ modules: [
 	    }
 	},
 	
-	
 	{	name: "Deny_Automatically",
 	    container: {
 	        icon: iconPath + "ico_deny.png",
@@ -981,7 +850,5 @@ modules: [
 	        fields: [],
 	    }
 	},
-	
-	
 	]
 };

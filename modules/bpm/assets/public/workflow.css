@@ -65,6 +65,11 @@ div.WireIt-Container-closebutton {
     height: 40px;
 }
 
+.WiringEditor-module-Request_User_Authorization_Blockchain .body{
+    width: 40px;
+    height: 40px;
+}
+
 .WiringEditor-module-Bandwidth input[type="text"], .WiringEditor-module-Duration input[type="text"] {
 	width: 40px;
 }

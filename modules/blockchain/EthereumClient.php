@@ -33,7 +33,21 @@ class EthereumClient
         $this->signerAddress = strtolower($cfg['signerAddress']);
     }
 
-    public function sendTransaction(string $signature, array $args) {
+    public function sendTransaction(string $signature, array $args, string $address) {
+        $data = $this->encodeCall(
+            $signature,
+            $args
+        );
+
+        return $this->jsonRpc('eth_sendTransaction', [[
+            'from' => $address,
+            'to'   => $this->contractAddress,
+            'data' => '0x' . $data,
+            'gas'  => '0x' . dechex(500000),
+        ]]);
+    }
+
+     public function sendTransactionMeican(string $signature, array $args) {
         $data = $this->encodeCall(
             $signature,
             $args
@@ -104,48 +118,26 @@ class EthereumClient
         return $decoded['result'] ?? null;
     }
     
-    public function decodeStringTuple(string $bytes) {
-        $wordSize = 32;
-        $totalLen = strlen($bytes);
-        $strings  = [];
-        $offset   = 0;
+    public function decodeGetCircuitState(string $bytes, array $sizes) {
+        $w      = 32;
+        $result = [];
 
-        // First word is the offset to the outer tuple — skip it.
-        $offset += $wordSize;
-
-        // Read head offsets until we hit data we've already accounted for.
-        $headOffsets = [];
-        while ($offset < $totalLen) {
-            $headOffset = $this->readUint256($bytes, $offset);
-            // Offset is relative to the start of the tuple body (after the
-            // outer tuple pointer word).
-            if ($headOffset > $totalLen) break;
-            $headOffsets[] = $headOffset;
-            $offset += $wordSize;
-            // Stop when the next head would point past what we've read.
-            if (count($headOffsets) > 0 && $headOffset <= ($offset - $wordSize)) break;
-        }
-
-        // Simpler approach: scan all 32-byte words for length-prefixed strings.
-        $strings = [];
-        $pos = 0;
-        while ($pos + $wordSize <= $totalLen) {
-            $candidate = $this->readUint256($bytes, $pos);
-            // A plausible string length: >0 and fits within remaining bytes.
-            if ($candidate > 0 && $candidate <= 1024 && $pos + $wordSize + $candidate <= $totalLen) {
-                $str = substr($bytes, $pos + $wordSize, $candidate);
-                // Only accept if it's valid UTF-8 / printable.
-                if (mb_check_encoding($str, 'UTF-8')) {
-                    $strings[] = $str;
-                    // Advance past length word + padded data.
-                    $pos += $wordSize + (int)(ceil($candidate / $wordSize) * $wordSize);
-                    continue;
-                }
+        // The top-level head has one pointer word per tuple.
+        foreach ($sizes as $tupleIndex => $fieldCount) {
+            $tupleBase = $this->readUint256($bytes, $tupleIndex * $w);
+            $strings   = [];
+            for ($f = 0; $f < $fieldCount; $f++) {
+                // Each field slot in the tuple head holds the offset to the
+                // string data, relative to tupleBase.
+                $strRelOff = $this->readUint256($bytes, $tupleBase + $f * $w);
+                $strAbsOff = $tupleBase + $strRelOff;
+                $len       = $this->readUint256($bytes, $strAbsOff);
+                $strings[] = $len > 0 ? substr($bytes, $strAbsOff + $w, $len) : '';
             }
-            $pos += $wordSize;
+            $result[] = $strings;
         }
 
-        return $strings;
+        return $result;
     }
 
     private function encodeCallWithTuple(string $signature, string $firstArg, array $tupleArgs) {
@@ -174,13 +166,38 @@ class EthereumClient
         $tailOffset = $headSize;
 
         foreach ($args as $arg) {
-            $heads .= str_pad(pack('N', $tailOffset), 32, "\x00", STR_PAD_LEFT);
-            $encoded  = $this->encodeString($arg);
-            $tails   .= $encoded;
-            $tailOffset += strlen($encoded);
+            if (is_bool($arg)) {
+                $heads .= str_pad($arg ? "\x01" : "\x00", 32, "\x00", STR_PAD_LEFT);
+            } else {
+                $heads .= str_pad(pack('N', $tailOffset), 32, "\x00", STR_PAD_LEFT);
+                $encoded  = is_array($arg) ? $this->encodeArray($arg) : $this->encodeValue($arg);
+                $tails   .= $encoded;
+                $tailOffset += strlen($encoded);
+            }
         }
 
         return bin2hex($selector . $heads . $tails);
+    }
+
+    private function encodeArray(array $items) {
+        $count     = count($items);
+        $countWord = str_pad(pack('N', $count), 32, "\x00", STR_PAD_LEFT);
+        $encoded   = '';
+        foreach ($items as $item) {
+            $encoded .= is_array($item) ? $this->encodeArray($item) : $this->encodeValue($item);
+        }
+        return $countWord . $encoded;
+    }
+
+    private function encodeValue($value) {
+        if (is_bool($value)) {
+            return str_pad($value ? "\x01" : "\x00", 32, "\x00", STR_PAD_LEFT);
+        }
+        // address: 0x + 40 hex chars → 32-byte left-zero-padded static word
+        if (is_string($value) && preg_match('/^0x[0-9a-fA-F]{40}$/', $value)) {
+            return str_pad(hex2bin(substr($value, 2)), 32, "\x00", STR_PAD_LEFT);
+        }
+        return $this->encodeString((string) $value);
     }
 
     private function readUint256(string $bytes, int $offset) {

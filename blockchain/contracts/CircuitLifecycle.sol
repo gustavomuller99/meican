@@ -38,35 +38,21 @@ contract CircuitLifecycle {
     mapping(bytes32 => ConnectionCircuit) private connectionCircuit;
     mapping(bytes32 => WorkflowAuthorization) private workflowAuth;
 
-    function setConnectionStatus(
-        string calldata externalId,
-        ConnectionStatus calldata data
-    ) external {
+    function setConnectionStatus(string calldata externalId, ConnectionStatus calldata data) external {
         connectionStatus[keccak256(bytes(externalId))] = data;
     }
 
-    function setConnectionAuth(
-        string calldata externalId,
-        string calldata domain,
-        string calldata status
-    ) external {
+    function setConnectionAuth(string calldata externalId, string calldata domain, string calldata status) external {
         bytes32 key = keccak256(bytes(externalId));
         connectionAuth[key] = ConnectionAuth(domain, status);
     }
 
-    function setConnectionCircuit(
-        string calldata externalId,
-        string calldata eventType,
-        string calldata status
-    ) external {
+    function setConnectionCircuit(string calldata externalId, string calldata eventType, string calldata status) external {
         bytes32 key = keccak256(bytes(externalId));
         connectionCircuit[key] = ConnectionCircuit(eventType, status);
     }
 
-    function requestAuthorization(
-        string calldata externalId,
-        address[] calldata requiredApprovers
-    ) external {
+    function requestAuthorization(string calldata externalId, address[] calldata requiredApprovers) external {
         require(requiredApprovers.length > 0, "At least one approver required");
         bytes32 key = keccak256(bytes(externalId));
         workflowAuth[key] = WorkflowAuthorization(requiredApprovers, address(0), WorkflowAuthorizationStatus.Pending);
@@ -93,8 +79,7 @@ contract CircuitLifecycle {
             : WorkflowAuthorizationStatus.Rejected;
     }
 
-    function getCircuitState(string calldata externalId)
-        external view
+    function getCircuitState(string calldata externalId) external view
         returns (
             ConnectionStatus memory,
             ConnectionAuth memory,
@@ -105,8 +90,7 @@ contract CircuitLifecycle {
         return (connectionStatus[key], connectionAuth[key], connectionCircuit[key]);
     }
 
-    function getWorkflowAuthorization(string calldata externalId)
-        external view
+    function getWorkflowAuthorization(string calldata externalId) external view
         returns (
             address[] memory requiredApprovers,
             address approver,
