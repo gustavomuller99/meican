@@ -33,26 +33,39 @@ contract CircuitLifecycle {
 
     enum WorkflowAuthorizationStatus { Pending, Approved, Rejected }
 
+    address owner;
+
     mapping(bytes32 => ConnectionStatus) private connectionStatus;
     mapping(bytes32 => ConnectionAuth) private connectionAuth;
     mapping(bytes32 => ConnectionCircuit) private connectionCircuit;
     mapping(bytes32 => WorkflowAuthorization) private workflowAuth;
 
-    function setConnectionStatus(string calldata externalId, ConnectionStatus calldata data) external {
+    constructor() {
+        owner = msg.sender;
+    }
+
+    modifier onlyOwner {
+        require(msg.sender == owner, "Not the contract owner");
+        _;
+    }
+
+    /* Circuit observability */
+    function setConnectionStatus(string calldata externalId, ConnectionStatus calldata data) external onlyOwner {
         connectionStatus[keccak256(bytes(externalId))] = data;
     }
 
-    function setConnectionAuth(string calldata externalId, string calldata domain, string calldata status) external {
+    function setConnectionAuth(string calldata externalId, string calldata domain, string calldata status) external onlyOwner {
         bytes32 key = keccak256(bytes(externalId));
         connectionAuth[key] = ConnectionAuth(domain, status);
     }
 
-    function setConnectionCircuit(string calldata externalId, string calldata eventType, string calldata status) external {
+    function setConnectionCircuit(string calldata externalId, string calldata eventType, string calldata status) external onlyOwner {
         bytes32 key = keccak256(bytes(externalId));
         connectionCircuit[key] = ConnectionCircuit(eventType, status);
     }
 
-    function requestAuthorization(string calldata externalId, address[] calldata requiredApprovers) external {
+    /* Workflow authorization */
+    function requestAuthorization(string calldata externalId, address[] calldata requiredApprovers) external onlyOwner {
         require(requiredApprovers.length > 0, "At least one approver required");
         bytes32 key = keccak256(bytes(externalId));
         workflowAuth[key] = WorkflowAuthorization(requiredApprovers, address(0), WorkflowAuthorizationStatus.Pending);
@@ -79,6 +92,7 @@ contract CircuitLifecycle {
             : WorkflowAuthorizationStatus.Rejected;
     }
 
+    /* Query */
     function getCircuitState(string calldata externalId) external view
         returns (
             ConnectionStatus memory,
