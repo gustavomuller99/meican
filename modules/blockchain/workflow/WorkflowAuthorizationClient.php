@@ -1,8 +1,9 @@
 <?php
 
-namespace meican\blockchain;
+namespace meican\blockchain\workflow;
 
 use meican\aaa\models\User;
+use meican\blockchain\EthereumClient;
 
 class WorkflowAuthorizationClient {
 

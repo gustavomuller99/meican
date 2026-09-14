@@ -118,6 +118,17 @@ class EthereumClient
         return $decoded['result'] ?? null;
     }
     
+    public function decodeStrings(string $bytes, int $count): array {
+        $w      = 32;
+        $result = [];
+        for ($i = 0; $i < $count; $i++) {
+            $strAbsOff = $this->readUint256($bytes, $i * $w);
+            $len       = $this->readUint256($bytes, $strAbsOff);
+            $result[]  = $len > 0 ? substr($bytes, $strAbsOff + $w, $len) : '';
+        }
+        return $result;
+    }
+
     public function decodeGetCircuitState(string $bytes, array $sizes) {
         $w      = 32;
         $result = [];

@@ -1,8 +1,6 @@
 """
 Usage:
   python get_circuit_state.py <rpc_url> <contract_address> <external_id>
-
-No private key needed — read-only call.
 """
 import sys
 from web3 import Web3

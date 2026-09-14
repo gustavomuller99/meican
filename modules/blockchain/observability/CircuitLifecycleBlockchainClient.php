@@ -1,12 +1,12 @@
 <?php
 
-namespace meican\blockchain;
+namespace meican\blockchain\observability;
 
 use meican\blockchain\EthereumClient;
 
-class CircuitLifecycleClient {
+class CircuitLifecycleBlockchainClient extends CircuitLifecycleClient {
 
-    public static function setConnectionStatus(
+    public function setConnectionStatus(
         string $externalId, string $userName, string $reservationName, string $bandwidth,
         string $status, string $resourcesStatus, string $dataplaneStatus,
         string $authStatus, string $start, string $finish
@@ -19,21 +19,21 @@ class CircuitLifecycleClient {
         );
     }
 
-    public static function setConnectionAuth(string $externalId, string $domain, string $status) {
+    public function setConnectionAuth(string $externalId, string $domain, string $status) {
         return EthereumClient::getInstance()->sendTransactionMeican(
             'setConnectionAuth(string,string,string)',
             [$externalId, $domain, $status]
         );
     }
 
-    public static function setConnectionCircuit(string $externalId, string $eventType, string $status) {
+    public function setConnectionCircuit(string $externalId, string $eventType, string $status) {
         return EthereumClient::getInstance()->sendTransactionMeican(
             'setConnectionCircuit(string,string,string)',
             [$externalId, $eventType, $status]
         );
     }
 
-    public static function getCircuitState(string $externalId) {
+    public function getCircuitState(string $externalId) {
         $client = EthereumClient::getInstance();
 
         $result = $client->ethCall('getCircuitState(string)', [$externalId]);
@@ -70,5 +70,4 @@ class CircuitLifecycleClient {
             ],
         ];
     }
-
 }

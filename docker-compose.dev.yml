@@ -18,6 +18,15 @@ services:
       retries: 20
       start_period: 15s
 
+  ipfs:
+    container_name: meican-ipfs 
+    image: ipfs/kubo:latest
+    ports:
+      - "5001:5001"
+      - "8080:8080"
+    volumes:
+      - ipfs-data:/data/ipfs
+
   meican:
     image: meican-app-dev
     extra_hosts:
@@ -34,6 +43,8 @@ services:
       - hardhat-shared:/shared
     environment:
       - CIRCUIT_LIFECYCLE_LOGGER
+      - CIRCUIT_LIFECYCLE_CLIENT
+      - IPFS_RPC_URL
       - BLOCKCHAIN_RPC_URL
       - BLOCKCHAIN_CHAIN_ID
       - BLOCKCHAIN_SIGNER_PRIVATE_KEY
@@ -61,3 +72,4 @@ services:
 
 volumes:
   hardhat-shared:
+  ipfs-data:

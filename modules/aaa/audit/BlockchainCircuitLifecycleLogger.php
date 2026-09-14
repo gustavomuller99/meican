@@ -4,12 +4,11 @@ namespace meican\aaa\audit;
 
 use Yii;
 use Exception;
-use meican\blockchain\CircuitLifecycleClient;
+use meican\blockchain\observability\CircuitLifecycleClient;
 use meican\bpm\models\BpmFlow;
 use meican\circuits\models\Connection;
 use meican\circuits\models\ConnectionAuth;
 use meican\circuits\models\ConnectionEvent;
-use meican\blockchain\EthereumClient;
 
 class BlockchainCircuitLifecycleLogger extends CircuitLifecycleLogger {
 
@@ -20,7 +19,7 @@ class BlockchainCircuitLifecycleLogger extends CircuitLifecycleLogger {
             $reservation = $connection->getReservation()->one();
             $user = $reservation->getRequesterUser()->one();
 
-            CircuitLifecycleClient::setConnectionStatus(
+            CircuitLifecycleClient::getInstance()->setConnectionStatus(
                 $connection->external_id,
                 $user->name,
                 $reservation->name,
@@ -41,7 +40,7 @@ class BlockchainCircuitLifecycleLogger extends CircuitLifecycleLogger {
 
             CircuitLifecycleLogger::validateConnection($connection);
 
-            CircuitLifecycleClient::setConnectionAuth(
+            CircuitLifecycleClient::getInstance()->setConnectionAuth(
                 $connection->external_id,
                 $connectionAuth->domain,
                 $connectionAuth->status
@@ -55,7 +54,7 @@ class BlockchainCircuitLifecycleLogger extends CircuitLifecycleLogger {
 
             CircuitLifecycleLogger::validateConnection($connection);
 
-            CircuitLifecycleClient::setConnectionCircuit(
+            CircuitLifecycleClient::getInstance()->setConnectionCircuit(
                 $connection->external_id,
                 $connectionEvent->type,
                 $connectionEvent->status

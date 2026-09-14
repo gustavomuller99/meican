@@ -35,11 +35,6 @@ contract CircuitLifecycle {
 
     address owner;
 
-    mapping(bytes32 => ConnectionStatus) private connectionStatus;
-    mapping(bytes32 => ConnectionAuth) private connectionAuth;
-    mapping(bytes32 => ConnectionCircuit) private connectionCircuit;
-    mapping(bytes32 => WorkflowAuthorization) private workflowAuth;
-
     constructor() {
         owner = msg.sender;
     }
@@ -50,6 +45,10 @@ contract CircuitLifecycle {
     }
 
     /* Circuit observability */
+    mapping(bytes32 => ConnectionStatus) private connectionStatus;
+    mapping(bytes32 => ConnectionAuth) private connectionAuth;
+    mapping(bytes32 => ConnectionCircuit) private connectionCircuit;
+
     function setConnectionStatus(string calldata externalId, ConnectionStatus calldata data) external onlyOwner {
         connectionStatus[keccak256(bytes(externalId))] = data;
     }
@@ -64,7 +63,50 @@ contract CircuitLifecycle {
         connectionCircuit[key] = ConnectionCircuit(eventType, status);
     }
 
+    function getCircuitState(string calldata externalId) external view
+        returns (
+            ConnectionStatus memory,
+            ConnectionAuth memory,
+            ConnectionCircuit memory
+        )
+    {
+        bytes32 key = keccak256(bytes(externalId));
+        return (connectionStatus[key], connectionAuth[key], connectionCircuit[key]);
+    }
+
+    /* Circuit observability IPFS */
+    mapping(bytes32 => string) private connectionStatusIPFS;
+    mapping(bytes32 => string) private connectionAuthIPFS;
+    mapping(bytes32 => string) private connectionCircuitIPFS;
+
+    function setConnectionStatusIPFS(string calldata externalId, string calldata cid) external onlyOwner {
+        connectionStatusIPFS[keccak256(bytes(externalId))] = cid;
+    }
+
+    function setConnectionAuthIPFS(string calldata externalId, string calldata cid) external onlyOwner {
+        bytes32 key = keccak256(bytes(externalId));
+        connectionAuthIPFS[key] = cid;
+    }
+
+    function setConnectionCircuitIPFS(string calldata externalId, string calldata cid) external onlyOwner {
+        bytes32 key = keccak256(bytes(externalId));
+        connectionCircuitIPFS[key] = cid;
+    }
+
+    function getCircuitStateIPFS(string calldata externalId) external view
+        returns (
+            string memory,
+            string memory,
+            string memory
+        )
+    {
+        bytes32 key = keccak256(bytes(externalId));
+        return (connectionStatusIPFS[key], connectionAuthIPFS[key], connectionCircuitIPFS[key]);
+    }
+
     /* Workflow authorization */
+    mapping(bytes32 => WorkflowAuthorization) private workflowAuth;
+
     function requestAuthorization(string calldata externalId, address[] calldata requiredApprovers) external onlyOwner {
         require(requiredApprovers.length > 0, "At least one approver required");
         bytes32 key = keccak256(bytes(externalId));
@@ -90,18 +132,6 @@ contract CircuitLifecycle {
         auth.status = approved
             ? WorkflowAuthorizationStatus.Approved
             : WorkflowAuthorizationStatus.Rejected;
-    }
-
-    /* Query */
-    function getCircuitState(string calldata externalId) external view
-        returns (
-            ConnectionStatus memory,
-            ConnectionAuth memory,
-            ConnectionCircuit memory
-        )
-    {
-        bytes32 key = keccak256(bytes(externalId));
-        return (connectionStatus[key], connectionAuth[key], connectionCircuit[key]);
     }
 
     function getWorkflowAuthorization(string calldata externalId) external view

@@ -26,7 +26,7 @@ use meican\bpm\models\BpmFlow;
 use meican\topology\models\Domain;
 use meican\notify\models\Notification;
 use meican\base\utils\DateUtils;
-use meican\blockchain\WorkflowAuthorizationClient;
+use meican\blockchain\workflow\WorkflowAuthorizationClient;
 
 /**
  * @author Diego Pittol

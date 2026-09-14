@@ -17,7 +17,7 @@ use meican\circuits\models\Reservation;
 use meican\circuits\models\AuthorizationNotification;
 use meican\circuits\models\ReservationNotification;
 use meican\aaa\audit\CircuitLifecycleLogger;
-use meican\blockchain\WorkflowAuthorizationClient;
+use meican\blockchain\workflow\WorkflowAuthorizationClient;
 use meican\topology\models\Domain;
 use meican\topology\models\Port;
 use meican\aaa\models\Group;

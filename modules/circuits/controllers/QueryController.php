@@ -9,8 +9,8 @@ namespace meican\circuits\controllers;
 use Yii;
 use yii\base\DynamicModel;
 use meican\aaa\RbacController;
-use meican\blockchain\CircuitLifecycleClient;
-use meican\blockchain\WorkflowAuthorizationClient;
+use meican\blockchain\observability\CircuitLifecycleClient;
+use meican\blockchain\workflow\WorkflowAuthorizationClient;
 
 class QueryController extends RbacController {
 
@@ -22,7 +22,7 @@ class QueryController extends RbacController {
         $workflowAuth = null;
 
         if ($model->load(Yii::$app->request->post()) && $model->validate() && $model->externalId) {
-            $circuitState = CircuitLifecycleClient::getCircuitState($model->externalId);
+            $circuitState = CircuitLifecycleClient::getInstance()->getCircuitState($model->externalId);
             $workflowAuth = WorkflowAuthorizationClient::getWorkflowAuthorizationState($model->externalId);
         }
 
