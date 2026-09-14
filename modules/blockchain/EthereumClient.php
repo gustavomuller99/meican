@@ -129,6 +129,33 @@ class EthereumClient
         return $result;
     }
 
+    public function decodeGetWorkflowAuthorization(string $bytes): array {
+        $w = 32;
+
+        $arrayOffset = $this->readUint256($bytes, 0);
+
+        $approverRaw = substr($bytes, $w, $w);
+        $approver    = '0x' . bin2hex(substr($approverRaw, 12, 20));
+
+        $statusInt = $this->readUint256($bytes, 2 * $w);
+        $statusMap = [0 => 'Pending', 1 => 'Approved', 2 => 'Rejected'];
+        $status    = $statusMap[$statusInt] ?? 'Unknown';
+
+        $arrayLen     = $this->readUint256($bytes, $arrayOffset);
+        $approvers    = [];
+        $elementStart = $arrayOffset + $w;
+        for ($i = 0; $i < $arrayLen; $i++) {
+            $word        = substr($bytes, $elementStart + $i * $w, $w);
+            $approvers[] = '0x' . bin2hex(substr($word, 12, 20));
+        }
+
+        return [
+            'requiredApprovers' => $approvers,
+            'approver'          => $approver,
+            'status'            => $status,
+        ];
+    }
+
     public function decodeGetCircuitState(string $bytes, array $sizes) {
         $w      = 32;
         $result = [];
