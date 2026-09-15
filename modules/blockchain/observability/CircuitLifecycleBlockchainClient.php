@@ -2,7 +2,7 @@
 
 namespace meican\blockchain\observability;
 
-use meican\blockchain\EthereumClient;
+use meican\blockchain\BlockchainClient;
 
 class CircuitLifecycleBlockchainClient extends CircuitLifecycleClient {
 
@@ -11,63 +11,22 @@ class CircuitLifecycleBlockchainClient extends CircuitLifecycleClient {
         string $status, string $resourcesStatus, string $dataplaneStatus,
         string $authStatus, string $start, string $finish
     ) {
-        $tupleArgs = [$userName, $reservationName, $bandwidth, $status, $resourcesStatus, $dataplaneStatus, $authStatus, $start, $finish];
-        return EthereumClient::getInstance()->sendTransactionTuple(
-            'setConnectionStatus(string,(string,string,string,string,string,string,string,string,string))',
-            $externalId,
-            $tupleArgs
+        return BlockchainClient::getInstance()->setConnectionStatus(
+            $externalId, $userName, $reservationName, $bandwidth,
+            $status, $resourcesStatus, $dataplaneStatus,
+            $authStatus, $start, $finish
         );
     }
 
     public function setConnectionAuth(string $externalId, string $domain, string $status) {
-        return EthereumClient::getInstance()->sendTransactionMeican(
-            'setConnectionAuth(string,string,string)',
-            [$externalId, $domain, $status]
-        );
+        return BlockchainClient::getInstance()->setConnectionAuth($externalId, $domain, $status);
     }
 
     public function setConnectionCircuit(string $externalId, string $eventType, string $status) {
-        return EthereumClient::getInstance()->sendTransactionMeican(
-            'setConnectionCircuit(string,string,string)',
-            [$externalId, $eventType, $status]
-        );
+        return BlockchainClient::getInstance()->setConnectionCircuit($externalId, $eventType, $status);
     }
 
     public function getCircuitState(string $externalId) {
-        $client = EthereumClient::getInstance();
-
-        $result = $client->ethCall('getCircuitState(string)', [$externalId]);
-
-        if (!$result || $result === '0x') {
-            return [];
-        }
-
-        $bytes = hex2bin(substr($result, 2));
-        $tuples = $client->decodeGetCircuitState($bytes, [9, 2, 2]);
-        $cs = $tuples[0];
-        $ca = $tuples[1];
-        $cc = $tuples[2];
-
-        return [
-            'connectionStatus' => [
-                'userName'        => $cs[0] ?? '',
-                'reservationName' => $cs[1] ?? '',
-                'bandwidth'       => $cs[2] ?? '',
-                'status'          => $cs[3] ?? '',
-                'resourcesStatus' => $cs[4] ?? '',
-                'dataplaneStatus' => $cs[5] ?? '',
-                'authStatus'      => $cs[6] ?? '',
-                'start'           => $cs[7] ?? '',
-                'finish'          => $cs[8] ?? '',
-            ],
-            'connectionAuth' => [
-                'domain' => $ca[0] ?? '',
-                'status' => $ca[1] ?? '',
-            ],
-            'connectionCircuit' => [
-                'type'   => $cc[0] ?? '',
-                'status' => $cc[1] ?? '',
-            ],
-        ];
+        return BlockchainClient::getInstance()->getCircuitState($externalId);
     }
 }

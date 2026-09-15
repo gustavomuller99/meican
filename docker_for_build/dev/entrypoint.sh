@@ -1,18 +1,12 @@
 #!/bin/sh
 
 # Pass blockchain env vars from Docker into Apache (mod_php doesn't inherit the shell env)
-for var in CIRCUIT_LIFECYCLE_LOGGER CIRCUIT_LIFECYCLE_CLIENT IPFS_RPC_URL BLOCKCHAIN_RPC_URL BLOCKCHAIN_CHAIN_ID BLOCKCHAIN_SIGNER_PRIVATE_KEY BLOCKCHAIN_SIGNER_ADDRESS; do
+for var in CIRCUIT_LIFECYCLE_LOGGER CIRCUIT_LIFECYCLE_CLIENT IPFS_RPC_URL BLOCKCHAIN_SIDECAR_URL BLOCKCHAIN_RPC_URL BLOCKCHAIN_CHAIN_ID BLOCKCHAIN_SIGNER_PRIVATE_KEY BLOCKCHAIN_SIGNER_ADDRESS; do
   val=$(eval echo \$$var)
   if [ -n "$val" ]; then
     echo "export $var=$val" >> /etc/apache2/envvars
   fi
 done
-
-# BLOCKCHAIN_CONTRACT_ADDRESS arrives late via the shared volume written by the hardhat container
-if [ -f /shared/blockchain.env ]; then
-  export $(cat /shared/blockchain.env | xargs)
-  sed 's/^/export /' /shared/blockchain.env >> /etc/apache2/envvars
-fi
 
 cp $MEICAN_DIR/docker_for_build/db.php $MEICAN_DIR/config/ \
  && sed -i "s/MYSQL_DATABASE/$MYSQL_DATABASE/" $MEICAN_DIR/config/db.php \

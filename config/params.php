@@ -26,7 +26,8 @@ return [
     'circuit_lifecycle_logger' => getenv('CIRCUIT_LIFECYCLE_LOGGER') ?: 'trace',
     'circuit_lifecycle_client' => getenv('CIRCUIT_LIFECYCLE_CLIENT') ?: 'blockchain',
     'blockchain' => [
-        'ipfsUrl'            => getenv('IPFS_RPC_URL'),
+        'sidecarUrl'      => getenv('BLOCKCHAIN_SIDECAR_URL'),
+        'ipfsUrl'         => getenv('IPFS_RPC_URL'),
         'rpcUrl'          => getenv('BLOCKCHAIN_RPC_URL'),
         'chainId'         => (int)(getenv('BLOCKCHAIN_CHAIN_ID')),
         'contractAddress' => getenv('BLOCKCHAIN_CONTRACT_ADDRESS'),

@@ -293,7 +293,7 @@ class AuthorizationController extends RbacController {
         /* Accept in the blockchain */
 		$user = User::find()->where(['id' => Yii::$app->user->getId()])->one();
 		$connection = $req->connection;
-		$ret = WorkflowAuthorizationClient::submitAuthorization($connection->external_id, true, $user->blockchain_address);
+		$ret = WorkflowAuthorizationClient::submitAuthorization($connection->external_id, true, $user->blockchain_private_key);
 
         if($message) $req->manager_message = $message;
         $req->status = Connection::AUTH_STATUS_APPROVED;
@@ -334,7 +334,7 @@ class AuthorizationController extends RbacController {
         /* Reject in the blockchain */
 		$user = User::find()->where(['id' => Yii::$app->user->getId()])->one();
 		$connection = $req->connection;
-		$ret = WorkflowAuthorizationClient::submitAuthorization($connection->external_id, false, $user->blockchain_address);
+		$ret = WorkflowAuthorizationClient::submitAuthorization($connection->external_id, false, $user->blockchain_private_key);
 
         if($message != null) $req->manager_message = $message;
         $req->status = Connection::AUTH_STATUS_REJECTED;

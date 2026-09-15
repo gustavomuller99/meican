@@ -3,7 +3,7 @@
 namespace meican\blockchain\observability;
 
 use CURLFile;
-use meican\blockchain\EthereumClient;
+use meican\blockchain\BlockchainClient;
 use Yii;
 
 class CircuitLifecycleBlockchainIPFSClient extends CircuitLifecycleClient {
@@ -36,10 +36,7 @@ class CircuitLifecycleBlockchainIPFSClient extends CircuitLifecycleClient {
 
         $cid = $this->addToIpfs($ipfs_file, $ipfs_filename);
 
-        return EthereumClient::getInstance()->sendTransactionMeican(
-            'setConnectionStatusIPFS(string,string)',
-            [$externalId, $cid]
-        );
+        return BlockchainClient::getInstance()->setConnectionStatusIPFS($externalId, $cid);
     }
 
     public function setConnectionAuth(string $externalId, string $domain, string $status) {
@@ -52,10 +49,7 @@ class CircuitLifecycleBlockchainIPFSClient extends CircuitLifecycleClient {
         
         $cid = $this->addToIpfs($ipfs_file, $ipfs_filename);
 
-        return EthereumClient::getInstance()->sendTransactionMeican(
-            'setConnectionAuthIPFS(string,string)',
-            [$externalId, $cid]
-        );
+        return BlockchainClient::getInstance()->setConnectionAuthIPFS($externalId, $cid);
     }
 
     public function setConnectionCircuit(string $externalId, string $eventType, string $status) {
@@ -68,26 +62,14 @@ class CircuitLifecycleBlockchainIPFSClient extends CircuitLifecycleClient {
         
         $cid = $this->addToIpfs($ipfs_file, $ipfs_filename);
 
-        return EthereumClient::getInstance()->sendTransactionMeican(
-            'setConnectionCircuitIPFS(string,string)',
-            [$externalId, $cid]
-        );
+        return BlockchainClient::getInstance()->setConnectionCircuitIPFS($externalId, $cid);
     }
 
     public function getCircuitState(string $externalId) {
-        $client = EthereumClient::getInstance();
-
-        $result = $client->ethCall('getCircuitStateIPFS(string)', [$externalId]);
-
-        if (!$result || $result === '0x') {
-            return [];
-        }
-
-        $bytes = hex2bin(substr($result, 2));
-        $response = $client->decodeStrings($bytes, 3);
-        $statusCid = $response[0];
-        $authCid = $response[1];
-        $circuitCid = $response[2];
+        $response = BlockchainClient::getInstance()->getCircuitStateIPFS($externalId);
+        $statusCid = $response["statusCid"];
+        $authCid = $response["authCid"];
+        $circuitCid = $response["circuitCid"];
 
         return [
             'connectionStatus' => $statusCid ? json_decode($this->getFromIpfs($statusCid), true) : [],
