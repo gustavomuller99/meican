@@ -13,11 +13,11 @@ if (!BLOCKCHAIN_RPC_URL || !BLOCKCHAIN_CONTRACT_ADDRESS || !BLOCKCHAIN_SIGNER_PR
 }
 
 const provider = new ethers.JsonRpcProvider(BLOCKCHAIN_RPC_URL);
-const wallet   = new ethers.Wallet(BLOCKCHAIN_SIGNER_PRIVATE_KEY, provider);
-const signer   = new ethers.NonceManager(wallet);
+const wallet = new ethers.Wallet(BLOCKCHAIN_SIGNER_PRIVATE_KEY, provider);
+const signer = new ethers.NonceManager(wallet);
 
 export const contractOwner = new ethers.Contract(BLOCKCHAIN_CONTRACT_ADDRESS, ABI, signer);
-export const contractView  = new ethers.Contract(BLOCKCHAIN_CONTRACT_ADDRESS, ABI, provider);
+export const contractView = new ethers.Contract(BLOCKCHAIN_CONTRACT_ADDRESS, ABI, provider);
 
 let txQueue = Promise.resolve();
 

@@ -8,6 +8,8 @@ use Yii;
 
 class CircuitLifecycleBlockchainIPFSClient extends CircuitLifecycleClient {
 
+    private $KEYS_DIR = '/etc/meican/keys/';
+
     private $ipfsUrl;
 
     public function __construct() {
@@ -80,7 +82,7 @@ class CircuitLifecycleBlockchainIPFSClient extends CircuitLifecycleClient {
 
     private function addToIpfs(string $content, string $filename) {
         $tempFile = tempnam(sys_get_temp_dir(), 'ipfs_');
-        file_put_contents($tempFile, $content);
+        file_put_contents($tempFile, $this->encrypt($content));
 
         $ch = curl_init($this->ipfsUrl . '/api/v0/add');
         curl_setopt_array($ch, [
@@ -124,6 +126,41 @@ class CircuitLifecycleBlockchainIPFSClient extends CircuitLifecycleClient {
             throw new \RuntimeException("IPFS fetch error (CID $cid): $curlErr");
         }
 
-        return $response;
+        return $this->decrypt($response);
+    }
+
+    private function encrypt(string $plaintext): string {
+        $aesKey = openssl_random_pseudo_bytes(32);
+        $iv = openssl_random_pseudo_bytes(16);
+
+        $ciphertext = openssl_encrypt($plaintext, 'aes-256-cbc', $aesKey, OPENSSL_RAW_DATA, $iv);
+
+        $pubKey = openssl_pkey_get_public('file://' . $this->KEYS_DIR . 'meican_rsa_public.pem');
+        if ($pubKey === false) {
+            throw new \RuntimeException("Failed to load RSA public key");
+        }
+        openssl_public_encrypt($aesKey, $encryptedKey, $pubKey, OPENSSL_PKCS1_OAEP_PADDING);
+
+        return json_encode([
+            'iv' => base64_encode($iv),
+            'key' => base64_encode($encryptedKey),
+            'data' => base64_encode($ciphertext),
+        ]);
+    }
+
+    private function decrypt(string $envelope): string {
+        $parts = json_decode($envelope, true);
+
+        $privKey = openssl_pkey_get_private('file://' . $this->KEYS_DIR . 'meican_rsa_private.pem');
+        if ($privKey === false) {
+            throw new \RuntimeException("Failed to load RSA private key");
+        }
+        $encryptedKey = base64_decode($parts['key']);
+        openssl_private_decrypt($encryptedKey, $aesKey, $privKey, OPENSSL_PKCS1_OAEP_PADDING);
+
+        $iv = base64_decode($parts['iv']);
+        $ciphertext = base64_decode($parts['data']);
+
+        return openssl_decrypt($ciphertext, 'aes-256-cbc', $aesKey, OPENSSL_RAW_DATA, $iv);
     }
 }

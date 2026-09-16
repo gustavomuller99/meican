@@ -50,6 +50,17 @@ RUN curl -fsSLk https://github.com/xdebug/xdebug/archive/refs/tags/2.7.2.tar.gz 
  && echo "xdebug.remote_log=/tmp/xdebug.log" >> /etc/php/7.0/mods-available/xdebug.ini \
  && phpenmod -v 7.0 xdebug
 
+RUN apt update \
+ && apt install openssl \
+ && mkdir -p /etc/meican/keys \
+ && openssl genrsa -out /etc/meican/keys/meican_rsa_private.pem 2048 \
+ && openssl rsa -in /etc/meican/keys/meican_rsa_private.pem \
+               -pubout -out /etc/meican/keys/meican_rsa_public.pem \
+ && chown -R www-data:www-data /etc/meican/keys \
+ && chmod 700 /etc/meican/keys \
+ && chmod 600 /etc/meican/keys/meican_rsa_private.pem \
+ && chmod 644 /etc/meican/keys/meican_rsa_public.pem
+
 RUN adduser --disabled-password --gecos '' meican \
  && usermod -aG sudo meican
 

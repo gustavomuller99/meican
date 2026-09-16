@@ -63,7 +63,7 @@ contract CircuitLifecycle {
         connectionCircuit[key] = ConnectionCircuit(eventType, status);
     }
 
-    function getCircuitState(string calldata externalId) external view
+    function getCircuitState(string calldata externalId) external view onlyOwner 
         returns (
             ConnectionStatus memory,
             ConnectionAuth memory,
@@ -93,7 +93,7 @@ contract CircuitLifecycle {
         connectionCircuitIPFS[key] = cid;
     }
 
-    function getCircuitStateIPFS(string calldata externalId) external view
+    function getCircuitStateIPFS(string calldata externalId) external view onlyOwner
         returns (
             string memory,
             string memory,
@@ -134,7 +134,7 @@ contract CircuitLifecycle {
             : WorkflowAuthorizationStatus.Rejected;
     }
 
-    function getWorkflowAuthorization(string calldata externalId) external view
+    function getWorkflowAuthorization(string calldata externalId) external view onlyOwner 
         returns (
             address[] memory requiredApprovers,
             address approver,
