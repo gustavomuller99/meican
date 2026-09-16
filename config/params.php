@@ -28,7 +28,6 @@ return [
     'blockchain' => [
         'sidecarUrl'      => getenv('BLOCKCHAIN_SIDECAR_URL'),
         'ipfsUrl'         => getenv('IPFS_RPC_URL'),
-        'rpcUrl'          => getenv('BLOCKCHAIN_RPC_URL'),
         'chainId'         => (int)(getenv('BLOCKCHAIN_CHAIN_ID')),
         'contractAddress' => getenv('BLOCKCHAIN_CONTRACT_ADDRESS'),
         'signerPrivateKey'=> getenv('BLOCKCHAIN_SIGNER_PRIVATE_KEY'),
